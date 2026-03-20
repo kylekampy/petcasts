@@ -1,0 +1,19 @@
+# Pet descriptions for scene generation
+# Add your pets here. Each pet needs:
+#   - name: display name
+#   - description: physical appearance for AI image generation
+#   - photos: list of filenames in pets/input/
+
+pets:
+  - name: 'Margot'
+    description: 'A vizsla. Slim and sleek. Fun loving and outgoing'
+    photos:
+      - 'margot_zeya_pebble.png'
+  - name: 'Zeya'
+    description: 'A boston terrier. One-eyed. Sassy and will fetch too much. More human oriented than dog oriented.'
+    photos:
+      - 'margot_zeya_pebble.png'
+  - name: 'Pebble'
+    description: 'A pitbull boxer mix. Huge scaried, but sweet as can be. Prefers cuddling in a corner to fetch. Or is wrestling with Margot'
+    photos:
+      - 'margot_zeya_pebble.png'

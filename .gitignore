@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+dist/
+output/debug/
+output/archive/
+output/latest.png
+output/latest.json
+pets/input/
+.env

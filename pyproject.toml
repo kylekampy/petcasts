@@ -1,0 +1,22 @@
+[project]
+name = "petcast"
+version = "0.1.0"
+description = "Daily pet weather forecast for e-ink displays"
+requires-python = ">=3.13"
+dependencies = [
+    "pillow>=11.0",
+    "httpx>=0.28",
+    "openai>=1.60",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+petcast = "petcast.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/petcast"]

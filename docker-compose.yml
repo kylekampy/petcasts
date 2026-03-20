@@ -1,0 +1,22 @@
+services:
+  petcast:
+    build: .
+    container_name: petcast
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./pets/input:/app/pets/input:ro
+      - ./pets/meta:/app/pets/meta:ro
+      - ./pets/state:/app/pets/state
+      - ./output:/app/output
+
+  # Static file server for the display to fetch from
+  nginx:
+    image: nginx:alpine
+    container_name: petcast-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./output:/usr/share/nginx/html:ro
+    depends_on:
+      - petcast

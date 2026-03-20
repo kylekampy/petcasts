@@ -1,0 +1,38 @@
+# Petcast configuration
+
+location:
+  name: 'La Crosse'
+  latitude: 43.8427
+  longitude: -91.1161
+
+styles:
+  - 'Studio Ghibli watercolor'
+  - 'Pixar 3D render'
+  - 'retro pixel art'
+  - 'impressionist oil painting'
+  - 'comic book pop art'
+  - 'Japanese woodblock print'
+  - 'claymation stop-motion'
+  - 'art nouveau poster'
+  - 'vaporwave synthwave'
+  - "children's book illustration"
+
+openai:
+  model: 'gpt-image-1'
+  chat_model: 'gpt-4.1'
+  size: '1024x1024'
+
+display:
+  width: 800
+  height: 480
+
+output:
+  latest: 'output/latest.png'
+  metadata: 'output/latest.json'
+  debug_dir: 'output/debug'
+  archive_dir: 'output/archive'
+
+cooldowns:
+  photo_days: 7
+  combo_days: 14
+  style_uses: 7
