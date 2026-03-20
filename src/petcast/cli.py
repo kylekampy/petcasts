@@ -52,7 +52,7 @@ def main() -> None:
         for i in range(args.count):
             sel_result = select(config, args.root.resolve())
             pets = ", ".join(p.name for p in sel_result.pets)
-            print(f"  #{i + 1}: {pets} | {sel_result.photos} | {sel_result.style}")
+            print(f"  #{i + 1}: {pets} | {sel_result.photo} | {sel_result.style}")
 
     else:
         parser.print_help()

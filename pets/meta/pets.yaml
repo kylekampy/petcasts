@@ -10,10 +10,10 @@ pets:
     photos:
       - 'margot_zeya_pebble.png'
   - name: 'Zeya'
-    description: 'A boston terrier. One-eyed. Sassy and will fetch too much. More human oriented than dog oriented.'
+    description: 'A boston terrier. One-eyed. Has NO tail, just a tiny nub/curl. Small and compact. Sassy and will fetch too much. More human oriented than dog oriented.'
     photos:
       - 'margot_zeya_pebble.png'
   - name: 'Pebble'
-    description: 'A pitbull boxer mix. Huge scaried, but sweet as can be. Prefers cuddling in a corner to fetch. Or is wrestling with Margot'
+    description: 'A pitbull boxer mix. ONE head, stocky muscular build. Huge scaredy-cat, but sweet as can be. Prefers cuddling in a corner to fetch. Or is wrestling with Margot'
     photos:
       - 'margot_zeya_pebble.png'

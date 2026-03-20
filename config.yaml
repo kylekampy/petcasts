@@ -18,9 +18,9 @@ styles:
   - "children's book illustration"
 
 openai:
-  model: 'gpt-image-1'
+  model: 'gpt-image-1.5'
   chat_model: 'gpt-4.1'
-  size: '1024x1024'
+  size: '1536x1024'
 
 display:
   width: 800

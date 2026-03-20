@@ -6,12 +6,11 @@ from pathlib import Path
 
 from PIL import Image
 
-from petcast.config import Config, load_config
-from petcast.select import Selection, load_history, record_selection, select
-from petcast.weather import Forecast, fetch_forecast
-from petcast.scene import SceneDescription, generate_scene
+from petcast.config import load_config
+from petcast.select import load_history, record_selection, select
+from petcast.weather import fetch_forecast
+from petcast.scene import generate_scene
 from petcast.generate import generate_image
-from petcast.overlay import composite_overlay
 from petcast.dither import dither_for_display
 
 
@@ -23,11 +22,11 @@ def run(root: Path, debug: bool = False) -> Path:
     config.output.debug_dir.mkdir(parents=True, exist_ok=True)
     config.output.latest.parent.mkdir(parents=True, exist_ok=True)
 
-    # Step 1: Select pets, photos, style
+    # Step 1: Select pets, photo, style
     print("Selecting pets and style...")
     selection = select(config, root)
     print(f"  Pets: {', '.join(p.name for p in selection.pets)}")
-    print(f"  Photos: {', '.join(selection.photos)}")
+    print(f"  Photo: {selection.photo}")
     print(f"  Style: {selection.style}")
 
     # Step 2: Fetch weather
@@ -44,21 +43,15 @@ def run(root: Path, debug: bool = False) -> Path:
 
     # Step 4: Generate image
     print("Generating image...")
-    raw_image = generate_image(config, selection, scene, root)
+    raw_image = generate_image(config, selection, scene, forecast, root)
     if debug:
         _save_debug(raw_image, config.output.debug_dir, "01_raw_generated")
 
-    # Step 5: Composite overlay
-    print("Compositing forecast overlay...")
-    overlaid = composite_overlay(raw_image, forecast, scene, config)
-    if debug:
-        _save_debug(overlaid, config.output.debug_dir, "02_overlaid")
-
-    # Step 6: Dither for display
+    # Step 5: Dither for display
     print("Dithering for Spectra 6...")
-    final = dither_for_display(overlaid, config)
+    final = dither_for_display(raw_image, config)
     if debug:
-        _save_debug(final, config.output.debug_dir, "03_dithered")
+        _save_debug(final, config.output.debug_dir, "02_dithered")
 
     # Record selection to history (before saves so cooldowns work even if save fails)
     record_selection(root, selection, scene_activity=scene.activity)
@@ -67,11 +60,10 @@ def run(root: Path, debug: bool = False) -> Path:
     print("Saving outputs...")
     final.save(config.output.latest, "PNG")
 
-    # Save metadata
     metadata = {
         "generated_at": datetime.now().isoformat(),
         "pets": [p.name for p in selection.pets],
-        "photos": selection.photos,
+        "photo": selection.photo,
         "style": selection.style,
         "weather": dict(forecast),
         "scene": {

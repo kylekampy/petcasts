@@ -12,7 +12,7 @@ from petcast.config import Config, Pet
 @dataclass
 class Selection:
     pets: list[Pet]
-    photos: list[str]  # one photo filename per pet
+    photo: str  # single reference photo filename
     style: str
 
 
@@ -32,13 +32,12 @@ def save_history(root: Path, history: list[dict]) -> None:
 
 
 def select(config: Config, root: Path) -> Selection:
-    """Pick pets, photos, and a style, suppressing recent usage."""
+    """Pick all pets, a random reference photo, and a style."""
     history = load_history(root)
     now = datetime.now()
 
     # Gather recently used items
     recent_photos: set[str] = set()
-    recent_combos: set[str] = set()
     recent_styles: dict[str, int] = {}
 
     for entry in history:
@@ -48,48 +47,29 @@ def select(config: Config, root: Path) -> Selection:
         if age < timedelta(days=config.cooldowns.photo_days):
             for photo in entry.get("photos", []):
                 recent_photos.add(photo)
+            # Also handle old single-photo format
+            if "photo" in entry:
+                recent_photos.add(entry["photo"])
 
-        if age < timedelta(days=config.cooldowns.combo_days):
-            combo_key = _combo_key(entry.get("pet_names", []))
-            if combo_key:
-                recent_combos.add(combo_key)
-
-        # Count style uses within the cooldown window
         if age < timedelta(days=config.cooldowns.combo_days):
             style = entry.get("style", "")
             if style:
                 recent_styles[style] = recent_styles.get(style, 0) + 1
 
-    # Pick 1-2 pets (if we have multiple)
-    num_pets = min(random.choice([1, 1, 2]), len(config.pets))
-    pet_pool = list(config.pets)
-    random.shuffle(pet_pool)
+    # Always use all pets
+    chosen_pets = list(config.pets)
 
-    # Try to avoid recent combos
-    chosen_pets: list[Pet] = []
-    for pet in pet_pool:
-        if len(chosen_pets) >= num_pets:
-            break
-        trial = chosen_pets + [pet]
-        combo = _combo_key([p.name for p in trial])
-        if combo not in recent_combos or len(chosen_pets) == 0:
-            chosen_pets.append(pet)
-
-    # If we couldn't fill, just take whatever
-    if len(chosen_pets) < num_pets:
-        for pet in pet_pool:
-            if pet not in chosen_pets:
-                chosen_pets.append(pet)
-            if len(chosen_pets) >= num_pets:
-                break
-
-    # Pick one photo per pet, avoiding recently used
-    chosen_photos: list[str] = []
+    # Collect all photos across all pets, pick one not recently used
+    all_photos: list[str] = []
     for pet in chosen_pets:
-        available = [p for p in pet.photos if p not in recent_photos]
-        if not available:
-            available = pet.photos  # all on cooldown, reset
-        chosen_photos.append(random.choice(available))
+        all_photos.extend(pet.photos)
+    # Deduplicate while preserving order
+    all_photos = list(dict.fromkeys(all_photos))
+
+    available = [p for p in all_photos if p not in recent_photos]
+    if not available:
+        available = all_photos
+    chosen_photo = random.choice(available)
 
     # Pick style, preferring less-used ones
     style_weights = []
@@ -100,7 +80,7 @@ def select(config: Config, root: Path) -> Selection:
 
     chosen_style = random.choices(config.styles, weights=style_weights, k=1)[0]
 
-    return Selection(pets=chosen_pets, photos=chosen_photos, style=chosen_style)
+    return Selection(pets=chosen_pets, photo=chosen_photo, style=chosen_style)
 
 
 def record_selection(
@@ -111,7 +91,7 @@ def record_selection(
     entry: dict = {
         "date": datetime.now().isoformat(),
         "pet_names": [p.name for p in selection.pets],
-        "photos": selection.photos,
+        "photo": selection.photo,
         "style": selection.style,
     }
     if scene_activity:
@@ -123,7 +103,3 @@ def record_selection(
         e for e in history if datetime.fromisoformat(e["date"]) > cutoff
     ]
     save_history(root, history)
-
-
-def _combo_key(names: list[str]) -> str:
-    return "|".join(sorted(names))

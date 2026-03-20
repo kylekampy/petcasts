@@ -1,4 +1,8 @@
-"""Forecast overlay compositing with Pillow."""
+"""Forecast overlay compositing with Pillow.
+
+Designed to be applied AFTER dithering, so uses only Spectra 6 palette colors
+with no anti-aliasing or transparency.
+"""
 
 from datetime import datetime
 from pathlib import Path
@@ -6,11 +10,13 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 from petcast.config import Config
+from petcast.dither import SPECTRA6_PALETTE
 from petcast.scene import SceneDescription
 from petcast.weather import Forecast
 
+BLACK = SPECTRA6_PALETTE[0]
+WHITE = SPECTRA6_PALETTE[1]
 
-# Position offsets: (x_anchor, y_anchor) as fraction of image size
 POSITIONS = {
     "top-left": (0.02, 0.02),
     "top-right": (0.98, 0.02),
@@ -25,20 +31,18 @@ def composite_overlay(
     scene: SceneDescription,
     config: Config,
 ) -> Image.Image:
-    """Composite a weather forecast panel onto the image."""
-    img = image.copy()
+    """Composite a weather forecast panel using only palette colors."""
+    img = image.copy().convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    # Try to load a nice font, fall back to default
     font_large = _load_font(28)
     font_medium = _load_font(20)
     font_small = _load_font(16)
 
-    # Build text lines
     today = datetime.now()
     date_str = today.strftime("%A, %B ") + str(today.day)
-    temp_str = f"{forecast['high_f']:.0f}° / {forecast['low_f']:.0f}°"
-    weather_str = f"{forecast['weather_icon']} {forecast['weather_desc']}"
+    temp_str = f"{forecast['high_f']:.0f}' / {forecast['low_f']:.0f}'"
+    weather_str = forecast["weather_desc"]
     precip_str = f"{forecast['precip_chance']}% precip"
 
     lines = [
@@ -49,8 +53,8 @@ def composite_overlay(
     ]
 
     # Calculate panel size
-    padding = 12
-    line_spacing = 6
+    padding = 10
+    line_spacing = 4
     max_width = 0
     total_height = padding * 2
 
@@ -63,7 +67,7 @@ def composite_overlay(
         max_width = max(max_width, w)
         total_height += h + line_spacing
 
-    total_height -= line_spacing  # remove trailing spacing
+    total_height -= line_spacing
     panel_w = max_width + padding * 2
     panel_h = total_height
 
@@ -76,7 +80,6 @@ def composite_overlay(
     anchor_x = int(img.width * anchor_x_frac)
     anchor_y = int(img.height * anchor_y_frac)
 
-    # Adjust for anchor point
     if "right" in pos:
         panel_x = anchor_x - panel_w
     else:
@@ -87,30 +90,17 @@ def composite_overlay(
     else:
         panel_y = anchor_y
 
-    # Draw semi-transparent background
-    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    overlay_draw = ImageDraw.Draw(overlay)
-    overlay_draw.rounded_rectangle(
+    # Solid black background — no transparency, no rounded corners
+    draw.rectangle(
         [panel_x, panel_y, panel_x + panel_w, panel_y + panel_h],
-        radius=10,
-        fill=(0, 0, 0, 140),
+        fill=BLACK,
     )
 
-    # Composite the panel background
-    if img.mode != "RGBA":
-        img = img.convert("RGBA")
-    img = Image.alpha_composite(img, overlay)
-    draw = ImageDraw.Draw(img)
-
-    # Draw text
+    # Draw white text, no anti-aliasing
     y = panel_y + padding
     for (text, font), (w, h) in zip(lines, line_sizes):
-        # Center text within panel
         x = panel_x + (panel_w - w) // 2
-        # Draw shadow
-        draw.text((x + 1, y + 1), text, fill=(0, 0, 0, 200), font=font)
-        # Draw text
-        draw.text((x, y), text, fill=(255, 255, 255, 240), font=font)
+        draw.text((x, y), text, fill=WHITE, font=font)
         y += h + line_spacing
 
     return img

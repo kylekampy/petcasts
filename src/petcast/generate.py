@@ -2,6 +2,7 @@
 
 import base64
 import io
+from datetime import datetime
 from pathlib import Path
 
 from openai import OpenAI
@@ -10,72 +11,84 @@ from PIL import Image
 from petcast.config import Config
 from petcast.scene import SceneDescription
 from petcast.select import Selection
+from petcast.weather import Forecast
 
 
 def generate_image(
     config: Config,
     selection: Selection,
     scene: SceneDescription,
+    forecast: Forecast,
     root: Path,
 ) -> Image.Image:
-    """Generate an image using OpenAI's image edit API with pet reference photos."""
-    prompt = _build_prompt(selection, scene)
+    """Generate an image using OpenAI's image API with pet reference photos."""
+    prompt = _build_prompt(selection, scene, forecast)
 
-    # Collect pet reference photo paths
-    photo_paths: list[Path] = []
-    for photo_filename in selection.photos:
-        photo_path = root / "pets" / "input" / photo_filename
-        if photo_path.exists():
-            photo_paths.append(photo_path)
-
+    photo_path = root / "pets" / "input" / selection.photo
     client = OpenAI()
 
-    if photo_paths:
-        # Use images.edit to pass reference photos
-        files = [open(p, "rb") for p in photo_paths]
-        try:
+    if photo_path.exists():
+        with open(photo_path, "rb") as f:
             result = client.images.edit(
-                image=files if len(files) > 1 else files[0],
-                prompt=prompt,
                 model=config.openai.model,
-                n=1,
+                image=[f],
+                prompt=prompt,
                 size=config.openai.size,
+                input_fidelity="high",
             )
-        finally:
-            for f in files:
-                f.close()
     else:
-        # No reference photos, fall back to generate
         result = client.images.generate(
             model=config.openai.model,
             prompt=prompt,
-            n=1,
             size=config.openai.size,
         )
 
-    # gpt-image models always return b64_json
     image_data = base64.standard_b64decode(result.data[0].b64_json)
     return Image.open(io.BytesIO(image_data))
 
 
-def _build_prompt(selection: Selection, scene: SceneDescription) -> str:
-    pet_names = " and ".join(p.name for p in selection.pets)
+def _build_prompt(
+    selection: Selection, scene: SceneDescription, forecast: Forecast
+) -> str:
+    pet_names = ", ".join(p.name for p in selection.pets)
     pet_descs = "; ".join(
-        f"{p.name} is {p.description}" for p in selection.pets
+        f"{p.name}: {p.description}" for p in selection.pets
     )
 
+    today = datetime.now()
+    day_name = today.strftime("%A")
+    day_spelled = " ".join(day_name.upper())
+    month_name = today.strftime("%B")
+    day_num = str(today.day)
+    temp_str = f"{forecast['high_f']:.0f}°/{forecast['low_f']:.0f}°"
+    weather_summary = forecast["weather_desc"]
+
     return f"""\
-Create an image in the style of {selection.style}.
+Create a wide landscape image in the style of {selection.style}.
 
 Subject: {pet_names} — {scene.activity}
 
-Pet descriptions (MUST match these closely using the reference photos): {pet_descs}
+Pet descriptions (MUST match these closely using the reference photo — ALL pets must appear, \
+each pet has exactly ONE head): {pet_descs}
 
 Foreground: {scene.foreground}
 Background: {scene.background}
 Mood/lighting: {scene.mood}
 Composition: {scene.constraints}
 
-IMPORTANT: The pets should be the clear focal point. Make them recognizable and true to their \
-reference photos. The scene should feel warm and inviting. Do NOT include any text or writing in the image.
+WEATHER FORECAST PANEL: Include a small forecast panel in the {scene.overlay_position} area, \
+rendered in the same {selection.style} art style as the rest of the image. The panel should show:
+- A stylized weather icon (sun, clouds, rain, snow, etc.) for "{weather_summary}"
+- The text "{day_name}, {month_name} {day_num}" (spell it exactly: {day_spelled})
+- The text "{temp_str}"
+The panel should feel integrated into the artwork. Keep the text large enough to read clearly. \
+Double-check spelling of all words. \
+IMPORTANT: Inset the panel at least 10% from ALL edges — the image will be cropped slightly \
+on the top and bottom, so nothing important should be within 10% of any edge.
+
+IMPORTANT: ALL pets ({pet_names}) must appear — each with exactly ONE head. \
+They should be the clear focal point. Make them recognizable and true to the reference photo. \
+The weather and season must be reflected in the environment. \
+Keep all important content (pets, panel) away from the top and bottom 10% of the image. \
+Do NOT include any other text besides what's in the forecast panel.
 """
