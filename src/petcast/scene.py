@@ -23,26 +23,44 @@ class SceneDescription:
 
 
 SYSTEM_PROMPT = """\
-You are a creative director for a pet weather forecast display. Given pet descriptions, \
-today's weather, the date and season, and an art style, you design a charming scene \
-featuring ALL the pets together in a weather-appropriate and seasonally-accurate activity.
+You are a creative director for an illustrated pet weather forecast displayed on a small \
+e-ink frame. You design charming, anthropomorphic scenes where the pets act like little \
+people — doing human activities appropriate to the weather and season.
 
-The scene must be seasonally accurate for the location. For example, in the upper Midwest \
-in early March, trees are bare, grass is brown/dormant, and there may be leftover snow. \
-Do not depict lush green landscapes when the season doesn't support it.
+ANTHROPOMORPHISM: The pets should be doing human-like things. NOT just sitting, lying, \
+or walking. Think: reading a book on the porch, sipping from a mug, grilling in the \
+backyard, building a snowman, flying a kite, having a tea party, fishing, painting, \
+gardening, stargazing, playing board games. They can hold objects, wear accessories, \
+sit in chairs, use tools. Make it whimsical and heartwarming.
 
-The final image will include a small weather forecast panel rendered in the chosen art style. \
-You must decide where this panel goes based on the scene composition — pick the corner with \
-the least visual interest. The image will be cropped to a wider aspect ratio — the top and bottom ~7% will be cut off. \
-Keep all important elements (pets, panel) well within the central 70% vertically.
+SEASONAL ACCURACY: The scene must match the actual season and weather at the location. \
+In the upper Midwest in early spring, trees are bare, grass is brown/dormant. In summer, \
+everything is lush and green. In fall, leaves are changing. In winter, there's snow. \
+Don't depict lush green when the season doesn't support it.
+
+ART STYLE: You will be given a specific art style. In your descriptions, lean HEAVILY \
+into the visual characteristics of that style. Describe specific techniques, textures, \
+and visual elements unique to that medium. For example, for "linocut print" describe \
+bold carved lines, ink texture, woodgrain showing through. For "stained glass" describe \
+thick black leading, jewel-toned glass segments, light shining through.
+
+COMPOSITION: The image will be cropped to a wider aspect ratio — top and bottom ~7% \
+will be cut off. Keep all important elements in the central 70% vertically. A small \
+weather forecast panel will be rendered in one corner — pick the corner with the least \
+visual interest.
+
+CRITICAL RULES:
+- Each pet appears EXACTLY ONCE. Never duplicate a pet.
+- Each pet has exactly ONE head.
+- Name every pet by name in the activity description.
 
 Respond with ONLY a JSON object (no markdown fencing) with these keys:
-- activity: what the pets are doing together (1 sentence, must include ALL pets)
-- foreground: detailed foreground description for the image generator
-- background: detailed background/setting description (must be seasonally accurate)
-- mood: lighting and color mood
-- constraints: important composition notes (e.g. "leave clear space in bottom-right for weather panel")
-- overlay_position: where the weather panel should go: "top-left", "top-right", "bottom-left", or "bottom-right"
+- activity: what the pets are doing (1 sentence, must name ALL pets, must be anthropomorphic)
+- foreground: detailed foreground description leaning heavily into the art style's visual language
+- background: detailed background (seasonally accurate, described in the art style's visual language)
+- mood: lighting and color mood specific to the art style
+- constraints: composition notes (e.g. "leave clear space in bottom-right for weather panel")
+- overlay_position: "top-left", "top-right", "bottom-left", or "bottom-right"
 """
 
 
@@ -94,8 +112,10 @@ Art style: {selection.style}
 Recent scenes to AVOID repeating:
 {json.dumps(recent_activities) if recent_activities else "(none yet)"}
 
-Design a scene featuring ALL pets ({all_pet_names}) for today's forecast image. \
-The environment must reflect the actual season and weather at this location.
+Design an anthropomorphic scene featuring ALL pets ({all_pet_names}) for today's forecast image. \
+The pets should be doing something human-like and charming that fits the weather. \
+The environment must reflect the actual season and weather at this location. \
+Lean heavily into the visual language of the "{selection.style}" art style in your descriptions.
 """
 
     if battery_pct is not None and battery_pct < 15:

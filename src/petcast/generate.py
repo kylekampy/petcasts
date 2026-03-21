@@ -66,36 +66,50 @@ def _build_prompt(
     temp_str = f"{forecast['high_f']:.0f}°/{forecast['low_f']:.0f}°"
     weather_summary = forecast["weather_desc"]
 
+    num_pets = len(selection.pets)
+    pet_count_word = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}.get(num_pets, str(num_pets))
+
+    # Build individual pet descriptions with emphasis on uniqueness
+    pet_list = "\n".join(
+        f"  {i+1}. {p.name}: {p.description}" for i, p in enumerate(selection.pets)
+    )
+
     return f"""\
-Create a wide landscape image in the style of {selection.style}.
+Create a wide landscape illustration in the style of {selection.style}.
 
-Subject: {pet_names} — {scene.activity}
+The image should look authentically like {selection.style} — use the specific visual \
+techniques, textures, line qualities, and color treatments of that medium. Do not just \
+apply a filter; make it look like it was genuinely created in this style.
 
-Pet descriptions (MUST match these closely using the reference photo — ALL pets must appear, \
-each pet has exactly ONE head): {pet_descs}
+SCENE: {scene.activity}
 
-Foreground: {scene.foreground}
-Background: {scene.background}
-Mood/lighting: {scene.mood}
-Composition: {scene.constraints}
+EXACTLY {pet_count_word.upper()} ({num_pets}) PETS — no more, no less. Each appears ONCE:
+{pet_list}
 
-WEATHER FORECAST PANEL: Include a small forecast panel in the {scene.overlay_position} area, \
-rendered in the same {selection.style} art style as the rest of the image. The panel should show:
-- A stylized weather icon for "{weather_summary}" ({forecast['precip_chance']}% chance of rain — \
-{"DO NOT show rain or raindrops in the icon, just clouds" if forecast['precip_chance'] < 30 else "rain is likely, show rain in the icon"})
-- The text "{day_name}, {month_name} {day_num}" (spell it exactly: {day_spelled})
-- The text "{temp_str}"\
+Use the reference photo to match each pet's appearance. Every pet has exactly ONE head \
+and ONE body. Do NOT duplicate any pet. Count the pets in your output — there must be \
+exactly {num_pets}.
+
+The pets are anthropomorphic — they can hold objects, sit in chairs, wear accessories, \
+and do human activities. They should look charming and whimsical.
+
+FOREGROUND: {scene.foreground}
+BACKGROUND: {scene.background}
+MOOD: {scene.mood}
+COMPOSITION: {scene.constraints}
+
+WEATHER PANEL in the {scene.overlay_position} corner, rendered in the {selection.style} style:
+- Weather icon for "{weather_summary}" ({forecast['precip_chance']}% precip — \
+{"NO rain in the icon, just clouds" if forecast['precip_chance'] < 30 else "show rain"})
+- "{day_name}, {month_name} {day_num}" (spell exactly: {day_spelled})
+- "{temp_str}"\
 {f"""
-- A small LOW BATTERY warning icon showing {battery_pct:.0f}%""" if battery_pct is not None and battery_pct < 15 else ""}
-The panel should feel integrated into the artwork. Keep the text large enough to read clearly. \
-Double-check spelling of all words. \
-IMPORTANT: The image will be cropped to a wider aspect ratio — the top and bottom ~7% will be cut off. \
-Inset the panel at least 15% from the top and bottom edges, and 5% from the left and right edges. \
-Nothing important should be near the top or bottom edge.
+- LOW BATTERY icon: {battery_pct:.0f}%""" if battery_pct is not None and battery_pct < 15 else ""}
+Inset the panel 15% from top/bottom edges, 5% from sides (image will be cropped to wider ratio).
 
-IMPORTANT: ALL pets ({pet_names}) must appear — each with exactly ONE head. \
-They should be the clear focal point. Make them recognizable and true to the reference photo. \
-The weather and season must be reflected in the environment. \
-Keep all important content (pets, panel) well away from the top and bottom edges. \
-Do NOT include any other text besides what's in the forecast panel.
+RULES:
+- Exactly {num_pets} pets, each with ONE head. No duplicates.
+- No text except the weather panel.
+- Season and weather reflected in the environment.
+- Keep all content away from top/bottom edges (will be cropped ~7%).
 """
