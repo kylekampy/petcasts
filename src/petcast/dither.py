@@ -1,4 +1,8 @@
-"""Spectra 6 e-ink dithering pipeline."""
+"""Spectra 6 e-ink dithering pipeline.
+
+Uses Atkinson dithering which diffuses only 75% of quantization error,
+producing cleaner edges and less color fringing than Floyd-Steinberg.
+"""
 
 import numpy as np
 from PIL import Image, ImageEnhance
@@ -23,10 +27,11 @@ def dither_for_display(image: Image.Image, config: Config) -> Image.Image:
     img = image.convert("RGB")
     img = _resize_crop(img, w, h)
 
+    # Boost contrast and saturation for e-ink
     img = ImageEnhance.Contrast(img).enhance(1.2)
     img = ImageEnhance.Color(img).enhance(1.3)
 
-    img = _floyd_steinberg_dither(img, SPECTRA6_PALETTE)
+    img = _atkinson_dither(img, SPECTRA6_PALETTE)
 
     return img
 
@@ -51,55 +56,38 @@ def _resize_crop(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
     return img.crop((left, top, left + target_w, top + target_h))
 
 
-def _floyd_steinberg_dither(
+def _atkinson_dither(
     img: Image.Image, palette: list[tuple[int, int, int]]
 ) -> Image.Image:
-    """Apply Floyd-Steinberg dithering against a fixed palette."""
+    """Atkinson dithering — diffuses 1/8 of error to 6 neighbors (75% total)."""
     pixels = np.array(img, dtype=np.float64)
     h, w, _ = pixels.shape
     pal = np.array(palette, dtype=np.float64)
-    n_colors = len(palette)
 
     for y in range(h):
-        row = pixels[y]
-        next_row = pixels[y + 1] if y + 1 < h else None
         for x in range(w):
-            r, g, b = row[x]
+            old = pixels[y, x].copy()
+            # Find nearest palette color (Euclidean distance)
+            dists = np.sum((pal - old) ** 2, axis=1)
+            nearest_idx = np.argmin(dists)
+            new = pal[nearest_idx]
+            pixels[y, x] = new
 
-            # Find nearest palette color (Euclidean distance, inlined)
-            best_idx = 0
-            best_dist = float("inf")
-            for i in range(n_colors):
-                dr = r - pal[i, 0]
-                dg = g - pal[i, 1]
-                db = b - pal[i, 2]
-                d = dr * dr + dg * dg + db * db
-                if d < best_dist:
-                    best_dist = d
-                    best_idx = i
-
-            nr, ng, nb = pal[best_idx]
-            er, eg, eb = r - nr, g - ng, b - nb
-            row[x, 0] = nr
-            row[x, 1] = ng
-            row[x, 2] = nb
+            # Atkinson: 1/8 of error to each of 6 neighbors
+            err = (old - new) / 8.0
 
             if x + 1 < w:
-                row[x + 1, 0] += er * 0.4375
-                row[x + 1, 1] += eg * 0.4375
-                row[x + 1, 2] += eb * 0.4375
-            if next_row is not None:
+                pixels[y, x + 1] += err
+            if x + 2 < w:
+                pixels[y, x + 2] += err
+            if y + 1 < h:
                 if x - 1 >= 0:
-                    next_row[x - 1, 0] += er * 0.1875
-                    next_row[x - 1, 1] += eg * 0.1875
-                    next_row[x - 1, 2] += eb * 0.1875
-                next_row[x, 0] += er * 0.3125
-                next_row[x, 1] += eg * 0.3125
-                next_row[x, 2] += eb * 0.3125
+                    pixels[y + 1, x - 1] += err
+                pixels[y + 1, x] += err
                 if x + 1 < w:
-                    next_row[x + 1, 0] += er * 0.0625
-                    next_row[x + 1, 1] += eg * 0.0625
-                    next_row[x + 1, 2] += eb * 0.0625
+                    pixels[y + 1, x + 1] += err
+            if y + 2 < h:
+                pixels[y + 2, x] += err
 
     pixels = np.clip(pixels, 0, 255).astype(np.uint8)
     return Image.fromarray(pixels)

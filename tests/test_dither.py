@@ -2,7 +2,7 @@
 
 from PIL import Image
 
-from petcast.dither import SPECTRA6_PALETTE, _floyd_steinberg_dither, _resize_crop
+from petcast.dither import SPECTRA6_PALETTE, _atkinson_dither, _resize_crop
 
 PALETTE_SET = set(SPECTRA6_PALETTE)
 
@@ -28,25 +28,25 @@ class TestDitheringOutput:
         for y in range(100):
             for x in range(100):
                 img.putpixel((x, y), (int(x * 2.55), int(y * 2.55), 128))
-        result = _floyd_steinberg_dither(img, SPECTRA6_PALETTE)
+        result = _atkinson_dither(img, SPECTRA6_PALETTE)
         assert _color_set(result) <= PALETTE_SET
 
     def test_pure_white(self):
-        assert _dominant_color(_floyd_steinberg_dither(_make_solid((255, 255, 255)), SPECTRA6_PALETTE)) == (255, 255, 255)
+        assert _dominant_color(_atkinson_dither(_make_solid((255, 255, 255)), SPECTRA6_PALETTE)) == (255, 255, 255)
 
     def test_pure_black(self):
-        assert _dominant_color(_floyd_steinberg_dither(_make_solid((0, 0, 0)), SPECTRA6_PALETTE)) == (0, 0, 0)
+        assert _dominant_color(_atkinson_dither(_make_solid((0, 0, 0)), SPECTRA6_PALETTE)) == (0, 0, 0)
 
     def test_red_image_has_red(self):
-        result = _floyd_steinberg_dither(_make_solid((200, 30, 30)), SPECTRA6_PALETTE)
+        result = _atkinson_dither(_make_solid((200, 30, 30)), SPECTRA6_PALETTE)
         assert (200, 0, 0) in _color_set(result)
 
     def test_green_image_has_green(self):
-        result = _floyd_steinberg_dither(_make_solid((30, 180, 30)), SPECTRA6_PALETTE)
+        result = _atkinson_dither(_make_solid((30, 180, 30)), SPECTRA6_PALETTE)
         assert (0, 150, 0) in _color_set(result)
 
     def test_blue_image_has_blue(self):
-        result = _floyd_steinberg_dither(_make_solid((30, 30, 200)), SPECTRA6_PALETTE)
+        result = _atkinson_dither(_make_solid((30, 30, 200)), SPECTRA6_PALETTE)
         assert (0, 0, 200) in _color_set(result)
 
 
