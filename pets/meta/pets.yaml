@@ -6,14 +6,105 @@
 
 pets:
   - name: 'Margot'
-    description: 'A vizsla. Slim and sleek. Fun loving and outgoing'
+    description: >-
+      A vizsla. Rust/copper-red short coat, slim and athletic build, long floppy ears,
+      deep amber eyes. Wears a light blue/teal collar. Tall and leggy. Super energetic
+      and outgoing — a velcro dog who always has to be near her people. Loves frisbee.
+      Teases and picks on Zeya. Best friends with Pebble, always wrestling together.
+      Loves cuddling with cats.
     photos:
-      - 'margot_zeya_pebble.png'
+      - 'margot_zeya_pebble_posing.png'
+      - 'pebble_zeya_margot_on_dog_bed.png'
+      - 'margot_zeya_in_dog_bed.png'
+      - 'pebble_margot_sitting.png'
+      - 'margot_pebble_zeya_on_deck.png'
+      - 'zeya_mumford_pebble_fennec_margot_couch_pile.png'
+      - 'margot_zeya_pebble_with_owners.png'
   - name: 'Zeya'
-    description: 'A boston terrier. One-eyed. Has NO tail, just a tiny nub/curl. Small and compact. Sassy and will fetch too much. More human oriented than dog oriented.'
+    description: >-
+      A boston terrier. Classic black and white tuxedo markings, white blaze on face,
+      erect bat ears. One-eyed (missing one eye). Has NO tail, just a tiny nub/curl.
+      Small and compact, much smaller than the other dogs.
+      High energy and sassy — obsessed with fetch. More people-oriented than
+      dog-oriented. Was an only dog for a long time before the others came along.
+      Gets teased by Margot. Loves cuddling with cats.
     photos:
-      - 'margot_zeya_pebble.png'
+      - 'margot_zeya_pebble_posing.png'
+      - 'pebble_zeya_margot_on_dog_bed.png'
+      - 'mumford_kitten_zeya_on_couch.png'
+      - 'mumford_kitten_zeya_snuggling.png'
+      - 'margot_zeya_in_dog_bed.png'
+      - 'margot_pebble_zeya_on_deck.png'
+      - 'zeya_mumford_pebble_fennec_margot_couch_pile.png'
+      - 'margot_zeya_pebble_with_owners.png'
+      - 'zeya_patrick_pixel_kona_on_red_blanket.png'
   - name: 'Pebble'
-    description: 'A pitbull boxer mix. ONE head, stocky muscular build. Huge scaredy-cat, but sweet as can be. Prefers cuddling in a corner to fetch. Or is wrestling with Margot'
+    description: >-
+      A pitbull boxer mix. ONE head. Stocky, muscular, barrel-chested build. Tan/fawn
+      coat with white patch on chest, broad blocky head, floppy rose ears, wrinkly
+      forehead. Wears a patterned collar. Bigger/wider than Margot. The laziest of the
+      dogs — a huge scaredy-cat but incredibly sweet. Prefers cuddling in a cozy corner
+      to any kind of exercise. Best friends with Margot, loves wrestling with her.
+      Loves all dogs. Gentle with cats.
     photos:
-      - 'margot_zeya_pebble.png'
+      - 'margot_zeya_pebble_posing.png'
+      - 'pebble_zeya_margot_on_dog_bed.png'
+      - 'pebble_mumford_kitten_cuddling.png'
+      - 'pebble_margot_sitting.png'
+      - 'pebble_mumford_on_couch.png'
+      - 'margot_pebble_zeya_on_deck.png'
+      - 'zeya_mumford_pebble_fennec_margot_couch_pile.png'
+      - 'pebble_fennec_cuddling.png'
+  - name: 'Mumford'
+    description: >-
+      A domestic shorthair cat. Warm buff/cream coat with faint tabby striping, more
+      solid buff than striped. Round face, golden-green eyes, pink nose. Full-grown,
+      medium build. Snuggly and affectionate — loves attention from his owners.
+      Mostly lazy. Best friends with Fennec, always found together. Loves cuddling
+      with the dogs too.
+    photos:
+      - 'pebble_mumford_kitten_cuddling.png'
+      - 'mumford_kitten_zeya_on_couch.png'
+      - 'mumford_kitten_zeya_snuggling.png'
+      - 'pebble_mumford_on_couch.png'
+      - 'fennec_mumford_on_bed.png'
+      - 'zeya_mumford_pebble_fennec_margot_couch_pile.png'
+      - 'mumford_fennec_sleeping.png'
+      - 'fennec_mumford_in_cat_bed.png'
+  - name: 'Fennec'
+    description: >-
+      A sphynx cat. Completely hairless/naked with wrinkly gray-brown skin, huge
+      pointed ears, large round eyes, angular face. Lean and bony. A heat thief —
+      constantly curling up on other pets or burrowing under blankets to steal warmth.
+      Sometimes wears a sweater. Obsessed with food. Either hiding under a blanket,
+      begging for food, or tearing around with the zoomies. Best friends with Mumford.
+    photos:
+      - 'fennec_mumford_on_bed.png'
+      - 'zeya_mumford_pebble_fennec_margot_couch_pile.png'
+      - 'pebble_fennec_cuddling.png'
+      - 'mumford_fennec_sleeping.png'
+      - 'fennec_mumford_in_cat_bed.png'
+  - name: 'Patrick'
+    description: >-
+      A gray tabby domestic shorthair cat. Silver-gray coat with darker gray stripes,
+      green eyes, medium build. Chunky and round when loafing. Super friendly boy.
+      From Kyle and Amanda's earlier years — no longer with us but forever loved.
+    photos:
+      - 'zeya_patrick_pixel_kona_on_red_blanket.png'
+      - 'patrick_pixel_on_couch.png'
+  - name: 'Pixel'
+    description: >-
+      A domestic shorthair cat with tuxedo pattern — mostly dark gray/black on top
+      with white chest, belly, and paws. Black ears with white between them.
+      Yellow-green eyes. Compact and round. A bit odd but very lovely.
+      Always wherever Patrick is. From an earlier time — no longer with us.
+    photos:
+      - 'zeya_patrick_pixel_kona_on_red_blanket.png'
+      - 'patrick_pixel_on_couch.png'
+  - name: 'Kona'
+    description: >-
+      A domestic shorthair cat. Solid black coat, sleek and shiny. Yellow/gold eyes,
+      wears a collar with a round yellow tag. Medium build. Super cuddly with people.
+      Always with Patrick and Pixel. From an earlier time — no longer with us.
+    photos:
+      - 'zeya_patrick_pixel_kona_on_red_blanket.png'

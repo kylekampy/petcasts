@@ -98,7 +98,7 @@ def load_config(root: Path) -> Config:
             style_uses=cd["style_uses"],
         ),
         pets=[
-            Pet(name=p["name"], description=p["description"], photos=p["photos"])
+            Pet(name=p["name"], description=p["description"], photos=p.get("photos") or [])
             for p in pets_raw["pets"]
         ],
     )
