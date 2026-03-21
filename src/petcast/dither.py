@@ -92,28 +92,61 @@ def _floyd_steinberg_dither(img: Image.Image) -> Image.Image:
     """Floyd-Steinberg dithering using the driver's own color classification."""
     pixels = np.array(img, dtype=np.float64)
     h, w, _ = pixels.shape
-    palette = SPECTRA6_PALETTE
 
+    # Pre-build lookup array for palette RGB values
+    pal_lookup = {
+        "BLACK": np.array((0, 0, 0), dtype=np.float64),
+        "WHITE": np.array((255, 255, 255), dtype=np.float64),
+        "RED": np.array((200, 0, 0), dtype=np.float64),
+        "GREEN": np.array((0, 150, 0), dtype=np.float64),
+        "BLUE": np.array((0, 0, 200), dtype=np.float64),
+        "YELLOW": np.array((255, 230, 0), dtype=np.float64),
+    }
+
+    # Inline the driver classify + error diffusion for speed
     for y in range(h):
+        row = pixels[y]
+        next_row = pixels[y + 1] if y + 1 < h else None
         for x in range(w):
-            old = pixels[y, x].copy()
+            r, g, b = row[x]
 
-            # Classify using the same logic as the display driver
-            color_name = _driver_classify(old[0], old[1], old[2])
-            new = np.array(palette[color_name], dtype=np.float64)
+            # Driver classification (inlined)
+            ri, gi, bi = int(min(max(r, 0), 255)), int(min(max(g, 0), 255)), int(min(max(b, 0), 255))
+            spread = max(ri, gi, bi) - min(ri, gi, bi)
+            if spread < 50:
+                name = "WHITE" if (ri + gi + bi) > 382 else "BLACK"
+            elif ri > 128:
+                if gi > 128:
+                    name = "WHITE" if bi > 128 else "YELLOW"
+                else:
+                    name = "RED"  # covers magenta (bo=True) too
+            elif gi > 128:
+                name = "GREEN"  # covers cyan (bo=True) too
+            elif bi > 128:
+                name = "BLUE"
+            else:
+                name = "BLACK"
 
-            pixels[y, x] = new
-            error = old - new
+            new = pal_lookup[name]
+            er, eg, eb = r - new[0], g - new[1], b - new[2]
+            row[x] = new
 
-            # Distribute error to neighbors
             if x + 1 < w:
-                pixels[y, x + 1] += error * (7 / 16)
-            if y + 1 < h:
+                row[x + 1, 0] += er * 0.4375
+                row[x + 1, 1] += eg * 0.4375
+                row[x + 1, 2] += eb * 0.4375
+            if next_row is not None:
                 if x - 1 >= 0:
-                    pixels[y + 1, x - 1] += error * (3 / 16)
-                pixels[y + 1, x] += error * (5 / 16)
+                    next_row[x - 1, 0] += er * 0.1875
+                    next_row[x - 1, 1] += eg * 0.1875
+                    next_row[x - 1, 2] += eb * 0.1875
+                next_row[x, 0] += er * 0.3125
+                next_row[x, 1] += eg * 0.3125
+                next_row[x, 2] += eb * 0.3125
                 if x + 1 < w:
-                    pixels[y + 1, x + 1] += error * (1 / 16)
+                    next_row[x + 1, 0] += er * 0.0625
+                    next_row[x + 1, 1] += eg * 0.0625
+                    next_row[x + 1, 2] += eb * 0.0625
 
     pixels = np.clip(pixels, 0, 255).astype(np.uint8)
     return Image.fromarray(pixels)
