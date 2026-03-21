@@ -66,7 +66,7 @@ class TestPerceptualColorMatching:
         img = _make_solid((60, 70, 110))
         result = _floyd_steinberg_dither(img, SPECTRA6_PALETTE)
         dominant = _dominant_color(result)
-        assert dominant in ((0, 0, 0), (0, 0, 200)), f"Dark blue-gray mapped to {dominant}"
+        assert dominant in ((0, 0, 0), (30, 60, 220)), f"Dark blue-gray mapped to {dominant}"
 
     def test_medium_gray_has_black(self):
         """Medium gray should include black pixels, not just chromatic colors."""
