@@ -1,7 +1,6 @@
 """Spectra 6 e-ink dithering pipeline.
 
-Uses CIELAB color space for perceptually accurate nearest-color matching,
-then outputs reference palette values for the display driver.
+Uses CIELAB color space for perceptually accurate nearest-color matching.
 """
 
 import numpy as np
@@ -9,25 +8,14 @@ from PIL import Image, ImageEnhance
 
 from petcast.config import Config
 
-# What the colors ACTUALLY look like on the Spectra 6 display (calibrated)
-# Used for dithering decisions (nearest-color matching in CIELAB space)
-DISPLAY_COLORS = [
-    (0, 0, 0),          # Black
-    (255, 255, 255),     # White
-    (160, 32, 32),       # Red (muted, not pure)
-    (96, 128, 80),       # Green (olive-toned)
-    (80, 128, 184),      # Blue (shifted toward cyan)
-    (240, 224, 80),      # Yellow (warm)
-]
-
-# What the display driver expects in the PNG (reference values)
-REFERENCE_PALETTE = [
-    (0, 0, 0),          # Black
-    (255, 255, 255),     # White
-    (255, 0, 0),         # Red
-    (0, 255, 0),         # Green
-    (0, 0, 255),         # Blue
-    (255, 255, 0),       # Yellow
+# Spectra 6 palette — values tuned for the display driver's color mapping
+SPECTRA6_PALETTE = [
+    (0, 0, 0),        # Black
+    (255, 255, 255),   # White
+    (200, 0, 0),       # Red
+    (0, 150, 0),       # Green
+    (0, 0, 200),       # Blue
+    (255, 230, 0),     # Yellow
 ]
 
 
@@ -39,7 +27,6 @@ def _srgb_to_linear(c: np.ndarray) -> np.ndarray:
 
 def _linear_to_xyz(rgb: np.ndarray) -> np.ndarray:
     """Convert linear RGB to CIE XYZ."""
-    # sRGB to XYZ matrix (D65)
     m = np.array([
         [0.4124564, 0.3575761, 0.1804375],
         [0.2126729, 0.7151522, 0.0721750],
@@ -50,7 +37,6 @@ def _linear_to_xyz(rgb: np.ndarray) -> np.ndarray:
 
 def _xyz_to_lab(xyz: np.ndarray) -> np.ndarray:
     """Convert CIE XYZ to CIELAB."""
-    # D65 white point
     ref = np.array([0.95047, 1.00000, 1.08883])
     xyz = xyz / ref
 
@@ -83,8 +69,7 @@ def dither_for_display(image: Image.Image, config: Config) -> Image.Image:
     img = ImageEnhance.Contrast(img).enhance(1.2)
     img = ImageEnhance.Color(img).enhance(1.3)
 
-    # Dither using CIELAB perceptual distance
-    img = _floyd_steinberg_dither(img, DISPLAY_COLORS, REFERENCE_PALETTE)
+    img = _floyd_steinberg_dither(img, SPECTRA6_PALETTE)
 
     return img
 
@@ -111,34 +96,28 @@ def _resize_crop(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
 
 def _floyd_steinberg_dither(
     img: Image.Image,
-    display_colors: list[tuple[int, int, int]],
-    reference_palette: list[tuple[int, int, int]],
+    palette: list[tuple[int, int, int]],
 ) -> Image.Image:
-    """Dither using CIELAB distance for perceptual accuracy."""
+    """Floyd-Steinberg dithering with CIELAB perceptual distance."""
     pixels = np.array(img, dtype=np.float64)
     h, w, _ = pixels.shape
 
-    # Pre-convert display palette to LAB
-    display_rgb = np.array(display_colors, dtype=np.float64)
-    display_lab = _rgb_to_lab(display_rgb)
-    reference = np.array(reference_palette, dtype=np.uint8)
+    # Pre-convert palette to LAB
+    pal_rgb = np.array(palette, dtype=np.float64)
+    pal_lab = _rgb_to_lab(pal_rgb)
 
     for y in range(h):
         for x in range(w):
             old_rgb = pixels[y, x].copy()
 
-            # Convert current pixel to LAB for perceptual comparison
+            # Find nearest palette color in CIELAB space
             old_lab = _rgb_to_lab(old_rgb)
-
-            # Find nearest display color in LAB space
-            dists = np.sum((display_lab - old_lab) ** 2, axis=1)
+            dists = np.sum((pal_lab - old_lab) ** 2, axis=1)
             nearest_idx = np.argmin(dists)
+            new_rgb = pal_rgb[nearest_idx]
 
-            # Error diffusion in RGB space (using display color)
-            error = old_rgb - display_rgb[nearest_idx]
-
-            # Write reference palette color to output
-            pixels[y, x] = reference[nearest_idx]
+            pixels[y, x] = new_rgb
+            error = old_rgb - new_rgb
 
             # Distribute error to neighbors
             if x + 1 < w:
