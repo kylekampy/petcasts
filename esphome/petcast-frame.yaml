@@ -1,16 +1,33 @@
 # Petcast ESPHome config for Seeed reTerminal E1002
 # Display wakes at 4:55 AM, triggers generation, fetches image at 5:00 AM,
 # updates the e-ink display, then deep sleeps until next day.
-# Green button: regenerate image (if you don't like today's).
+# Green button wakes from deep sleep and triggers a regeneration cycle.
 
 esphome:
   name: petcast-frame
   friendly_name: Petcast Frame
   on_boot:
+    priority: -100
     then:
+      - logger.log: 'Boot sequence starting'
       - light.turn_on: onboard_led
-      - logger.log: "Device booted"
+      - logger.log: 'LED on, measuring battery'
       - script.execute: update_battery_status
+      - logger.log: 'Waiting for network to stabilize...'
+      - delay: 5s
+      # If woken by green button, regenerate first
+      - if:
+          condition:
+            - lambda: 'return esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0;'
+          then:
+            - logger.log: 'Woke from green button — regenerating'
+            - script.execute: trigger_generation
+            - logger.log: 'Waiting 90s for generation to complete...'
+            - delay: 90s
+      # Always fetch and display the latest image on boot
+      - logger.log: 'Fetching latest image from server...'
+      - component.update: petcast_image
+      - logger.log: 'Boot sequence complete'
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -24,15 +41,19 @@ psram:
   mode: octal
   speed: 80MHz
 
+api:
+
 ota:
   - platform: esphome
-    password: !secret ota_password
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+  on_connect:
+    then:
+      - logger.log: 'WiFi connected'
   ap:
-    ssid: "Petcast-Frame Fallback"
+    ssid: 'Petcast-Frame Fallback'
     password: !secret ap_password
 
 captive_portal:
@@ -40,7 +61,7 @@ captive_portal:
 time:
   - platform: sntp
     id: sntp_time
-    timezone: "America/Chicago"
+    timezone: 'America/Chicago'
     servers:
       - 0.pool.ntp.org
       - 1.pool.ntp.org
@@ -66,7 +87,7 @@ time:
           - deep_sleep.enter:
               id: deep_sleep_ctrl
               time_id: sntp_time
-              until: "04:55:00"
+              until: '04:55:00'
 
 spi:
   clk_pin: GPIO7
@@ -94,10 +115,12 @@ online_image:
     on_download_finished:
       - component.update: epaper_display
 
-# Green button wakes from deep sleep AND triggers a regeneration loop
 deep_sleep:
   id: deep_sleep_ctrl
-  wakeup_pin: GPIO3
+  wakeup_pin:
+    number: GPIO3
+    ignore_strapping_warning: true
+    allow_other_uses: true
   wakeup_pin_mode: INVERT_WAKEUP
 
 binary_sensor:
@@ -105,15 +128,21 @@ binary_sensor:
     pin:
       number: GPIO3
       mode: INPUT_PULLUP
-    name: "Regenerate Button"
+      ignore_strapping_warning: true
+      allow_other_uses: true
+    name: 'Green Button'
+    internal: true
     filters:
-      - delayed_on: 50ms
+      - delayed_on: 2s # must hold for 2 seconds
     on_press:
       then:
-        - logger.log: "Regenerate button pressed"
-        - script.execute: trigger_generation
-        - delay: 90s
-        - component.update: petcast_image
+        - logger.log: 'Green button held — entering deep sleep'
+        - light.turn_off: onboard_led
+        - delay: 1s
+        - deep_sleep.enter:
+            id: deep_sleep_ctrl
+            time_id: sntp_time
+            until: '04:55:00'
 
 script:
   - id: trigger_generation
@@ -121,10 +150,7 @@ script:
     then:
       - http_request.post:
           url: http://mini:7777/api/generate
-          on_response:
-            - logger.log:
-                format: "Generation triggered: %d"
-                args: ["status_code"]
+      - logger.log: 'Generation triggered'
   - id: update_battery_status
     mode: single
     then:
@@ -145,7 +171,7 @@ output:
 
 light:
   - platform: binary
-    name: "Onboard LED"
+    name: 'Onboard LED'
     internal: true
     output: led_output
     id: onboard_led
@@ -153,7 +179,7 @@ light:
 sensor:
   - platform: adc
     pin: GPIO1
-    name: "Battery Voltage"
+    name: 'Battery Voltage'
     id: battery_voltage
     internal: true
     update_interval: never
@@ -161,10 +187,10 @@ sensor:
     filters:
       - multiply: 2.0
   - platform: template
-    name: "Battery Level"
+    name: 'Battery Level'
     id: battery_level
-    unit_of_measurement: "%"
-    icon: "mdi:battery"
+    unit_of_measurement: '%'
+    icon: 'mdi:battery'
     device_class: battery
     state_class: measurement
     lambda: 'return id(battery_voltage).state;'
