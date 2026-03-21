@@ -1,11 +1,15 @@
 # Petcast ESPHome config for Seeed reTerminal E1002
 #
-# Behavior:
-#   - Deep sleeps until 4:58 AM daily
-#   - Wakes, triggers generation on server, waits, fetches image, displays, sleeps
-#   - Green button: wake from sleep, regenerate, display, sleep
-#   - Right white button: manual sleep
-#   - Safety: auto-sleeps after 5 minutes awake no matter what
+# Buttons:
+#   Green:       wake from deep sleep (fetch latest image, no regeneration)
+#   Right white: trigger regeneration (while awake)
+#   Left white:  toggle test pattern / petcast image
+#
+# Schedule:
+#   4:58 AM: deep sleep timer wakes, triggers generation, fetches, displays, sleeps
+#
+# Safety:
+#   Auto-sleeps after 5 minutes awake no matter what
 
 esphome:
   name: petcast-frame
@@ -16,21 +20,15 @@ esphome:
       - logger.log: "Boot: starting"
       - light.turn_on: onboard_led
       - script.execute: update_battery_status
-      # Start the safety watchdog — if we're still awake in 5 min, force sleep
       - script.execute: sleep_watchdog
       - logger.log: "Boot: waiting for network..."
       - delay: 5s
-      # Always trigger a fresh generation and fetch it
-      - logger.log: "Boot: triggering generation"
-      - script.execute: trigger_generation
-      - logger.log: "Boot: waiting for generation (90s)..."
-      - delay: 90s
-      - logger.log: "Boot: fetching image"
+      # Fetch and display the latest image (already generated or from last time)
+      - logger.log: "Boot: fetching latest image"
       - component.update: petcast_image
       - logger.log: "Boot: waiting for display refresh..."
       - delay: 30s
-      - logger.log: "Boot: done, sleeping"
-      - script.execute: go_to_sleep
+      - logger.log: "Boot: complete (watchdog will sleep in ~4 min)"
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -68,6 +66,21 @@ time:
     servers:
       - 0.pool.ntp.org
       - 1.pool.ntp.org
+    on_time:
+      # 4:58 AM — the daily generation cycle
+      # (device wakes from deep sleep, boot runs, then this fires)
+      - seconds: 0
+        minutes: 58
+        hours: 4
+        then:
+          - logger.log: "Scheduled: triggering daily generation"
+          - script.execute: trigger_generation
+
+globals:
+  - id: showing_test_pattern
+    type: bool
+    restore_value: false
+    initial_value: "false"
 
 spi:
   clk_pin: GPIO7
@@ -79,7 +92,11 @@ display:
     model: Seeed-reTerminal-E1002
     update_interval: never
     lambda: |-
-      it.image(0, 0, id(petcast_image));
+      if (id(showing_test_pattern)) {
+        it.image(0, 0, id(test_pattern_image));
+      } else {
+        it.image(0, 0, id(petcast_image));
+      }
 
 http_request:
   verify_ssl: false
@@ -95,6 +112,14 @@ online_image:
     on_download_finished:
       - logger.log: "Image downloaded, updating display"
       - component.update: epaper_display
+  - id: test_pattern_image
+    format: PNG
+    type: RGB
+    buffer_size: 65536
+    url: http://mini:7777/output/test_pattern.png
+    on_download_finished:
+      - logger.log: "Test pattern downloaded, updating display"
+      - component.update: epaper_display
 
 # Green button wakes from deep sleep
 deep_sleep:
@@ -104,20 +129,35 @@ deep_sleep:
     ignore_strapping_warning: true
   wakeup_pin_mode: INVERT_WAKEUP
 
-# Right white button = manual sleep
 binary_sensor:
+  # Right white button = regenerate
   - platform: gpio
     pin:
       number: GPIO4
       mode: INPUT_PULLUP
-    name: "Sleep Button"
+    name: "Regenerate Button"
     internal: true
     filters:
       - delayed_on: 50ms
     on_press:
       then:
-        - logger.log: "Sleep button pressed"
-        - script.execute: go_to_sleep
+        - logger.log: "Regenerate button pressed"
+        - script.execute: trigger_generation
+        - delay: 90s
+        - component.update: petcast_image
+  # Left white button = toggle test pattern
+  - platform: gpio
+    pin:
+      number: GPIO5
+      mode: INPUT_PULLUP
+    name: "Test Pattern Button"
+    internal: true
+    filters:
+      - delayed_on: 50ms
+    on_press:
+      then:
+        - logger.log: "Test pattern toggle"
+        - script.execute: toggle_test_pattern
 
 script:
   - id: trigger_generation
@@ -138,7 +178,14 @@ script:
   - id: go_to_sleep
     mode: single
     then:
-      - logger.log: "Entering deep sleep until 4:58 AM"
+      - wait_until:
+          condition:
+            - time.has_time:
+                id: sntp_time
+          timeout: 30s
+      - logger.log:
+          format: "Sleeping until 4:58 AM (current: %02d:%02d)"
+          args: ["id(sntp_time).now().hour", "id(sntp_time).now().minute"]
       - light.turn_off: onboard_led
       - delay: 1s
       - deep_sleep.enter:
@@ -146,13 +193,26 @@ script:
           time_id: sntp_time
           until: "04:58:00"
 
+  - id: toggle_test_pattern
+    mode: single
+    then:
+      - if:
+          condition:
+            - lambda: 'return id(showing_test_pattern);'
+          then:
+            - logger.log: "Switching to petcast image"
+            - lambda: 'id(showing_test_pattern) = false;'
+            - component.update: epaper_display
+          else:
+            - logger.log: "Switching to test pattern"
+            - lambda: 'id(showing_test_pattern) = true;'
+            - component.update: test_pattern_image
+
   - id: sleep_watchdog
     mode: single
     then:
-      # Safety net: if still awake after 5 minutes, force sleep
-      # This catches OTA reboots, power cycles, failed boots, etc.
       - delay: 300s
-      - logger.log: "Watchdog: still awake after 5 min, forcing sleep"
+      - logger.log: "Watchdog: 5 min awake, sleeping"
       - script.execute: go_to_sleep
 
   - id: update_battery_status

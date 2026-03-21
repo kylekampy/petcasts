@@ -154,9 +154,75 @@ class PetcastHandler(SimpleHTTPRequestHandler):
         print(f"[server] {args[0]}")
 
 
+def _generate_test_pattern(root: Path) -> None:
+    """Generate a Spectra 6 test pattern PNG."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    colors = [
+        ((255, 0, 0), "Red"),
+        ((0, 255, 0), "Green"),
+        ((0, 0, 255), "Blue"),
+        ((255, 255, 0), "Yellow"),
+        ((0, 0, 0), "Black"),
+        ((255, 255, 255), "White"),
+    ]
+
+    w, h = 800, 480
+    img = Image.new("RGB", (w, h), (255, 255, 255))
+    draw = ImageDraw.Draw(img)
+
+    bar_w = w // 6
+    for i, (color, name) in enumerate(colors):
+        x0 = i * bar_w
+        x1 = (i + 1) * bar_w if i < 5 else w
+        draw.rectangle([x0, 0, x1, h * 2 // 3], fill=color)
+        text_color = (255, 255, 255) if name in ("Black", "Red", "Blue", "Green") else (0, 0, 0)
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
+        except OSError:
+            try:
+                font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 18)
+            except OSError:
+                font = ImageFont.load_default(18)
+        bbox = draw.textbbox((0, 0), name, font=font)
+        tw = bbox[2] - bbox[0]
+        draw.text((x0 + (bar_w - tw) // 2, 10), name, fill=text_color, font=font)
+
+    # Bottom third: checkerboard dither patterns
+    patterns = [
+        ("Orange", (255, 0, 0), (255, 255, 0)),
+        ("Purple", (255, 0, 0), (0, 0, 255)),
+        ("Cyan", (0, 255, 0), (0, 0, 255)),
+        ("Gray", (0, 0, 0), (255, 255, 255)),
+        ("Pink", (255, 0, 0), (255, 255, 255)),
+        ("Lime", (0, 255, 0), (255, 255, 255)),
+    ]
+
+    pat_w = w // 6
+    y_start = h * 2 // 3
+    for i, (name, c1, c2) in enumerate(patterns):
+        x0 = i * pat_w
+        for py in range(y_start, h):
+            for px in range(x0, min(x0 + pat_w, w)):
+                if (px + py) % 2 == 0:
+                    img.putpixel((px, py), c1)
+                else:
+                    img.putpixel((px, py), c2)
+        text_color = (255, 255, 255) if name in ("Purple", "Gray") else (0, 0, 0)
+        bbox = draw.textbbox((0, 0), name, font=font)
+        tw = bbox[2] - bbox[0]
+        draw.text((x0 + (pat_w - tw) // 2, y_start + 10), name, fill=text_color, font=font)
+
+    out = root / "output" / "test_pattern.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    img.save(out, "PNG")
+    print(f"[server] Test pattern saved to {out}")
+
+
 def serve(root: Path, port: int = 7777):
     """Start the petcast HTTP server."""
     PetcastHandler.root = root.resolve()
+    _generate_test_pattern(root.resolve())
 
     server = HTTPServer(("0.0.0.0", port), PetcastHandler)
     print(f"Petcast server listening on port {port}")

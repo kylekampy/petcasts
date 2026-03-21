@@ -86,7 +86,7 @@ rendered in the same {selection.style} art style as the rest of the image. The p
 - The text "{day_name}, {month_name} {day_num}" (spell it exactly: {day_spelled})
 - The text "{temp_str}"\
 {f"""
-- A small battery icon showing approximately {battery_pct:.0f}% charge""" if battery_pct is not None else ""}
+- A small LOW BATTERY warning icon showing {battery_pct:.0f}%""" if battery_pct is not None and battery_pct < 15 else ""}
 The panel should feel integrated into the artwork. Keep the text large enough to read clearly. \
 Double-check spelling of all words. \
 IMPORTANT: The image will be cropped to a wider aspect ratio — the top and bottom ~7% will be cut off. \
