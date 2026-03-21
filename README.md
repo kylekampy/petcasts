@@ -4,6 +4,7 @@ AI-generated daily pet weather forecasts for e-ink displays. Heavily inspired by
 
 Petcast picks your pets, checks the weather, generates a styled scene with an integrated forecast panel via OpenAI, dithers it for a 6-color e-ink palette, and serves it over HTTP for your display to fetch.
 
+![Mumford and Fennec snuggling](docs/samples/mumford_fennec_blanket.png)
 ![Pixel art cats](docs/samples/pixel_art_cats.png)
 ![Claymation dogs](docs/samples/claymation_dogs.png)
 
