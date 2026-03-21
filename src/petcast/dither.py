@@ -1,6 +1,7 @@
 """Spectra 6 e-ink dithering pipeline.
 
-Uses CIELAB color space for perceptually accurate nearest-color matching.
+Matches the ESPHome epaper_spi Spectra E6 driver's color classification:
+grayscale check (spread < 50), then binary threshold at 128 per channel.
 """
 
 import numpy as np
@@ -8,54 +9,47 @@ from PIL import Image, ImageEnhance
 
 from petcast.config import Config
 
-# Spectra 6 palette — values tuned for the display driver's color mapping
-SPECTRA6_PALETTE = [
-    (0, 0, 0),        # Black
-    (255, 255, 255),   # White
-    (200, 0, 0),       # Red
-    (0, 150, 0),       # Green
-    (30, 60, 220),     # Blue
-    (255, 230, 0),     # Yellow
-]
+# Output palette values — one per driver bucket
+# These must pass through the driver's classification correctly
+SPECTRA6_PALETTE = {
+    "BLACK": (0, 0, 0),
+    "WHITE": (255, 255, 255),
+    "RED": (200, 0, 0),
+    "GREEN": (0, 150, 0),
+    "BLUE": (0, 0, 200),
+    "YELLOW": (255, 230, 0),
+}
 
 
-def _srgb_to_linear(c: np.ndarray) -> np.ndarray:
-    """Convert sRGB [0,255] to linear RGB [0,1]."""
-    c = np.clip(c, 0, 255) / 255.0
-    return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+def _driver_classify(r: float, g: float, b: float) -> str:
+    """Replicate the ESPHome Spectra E6 driver's color classification."""
+    ri, gi, bi = int(np.clip(r, 0, 255)), int(np.clip(g, 0, 255)), int(np.clip(b, 0, 255))
+    spread = max(ri, gi, bi) - min(ri, gi, bi)
 
+    if spread < 50:
+        # Grayscale
+        return "WHITE" if (ri + gi + bi) > 382 else "BLACK"
 
-def _linear_to_xyz(rgb: np.ndarray) -> np.ndarray:
-    """Convert linear RGB to CIE XYZ."""
-    m = np.array([
-        [0.4124564, 0.3575761, 0.1804375],
-        [0.2126729, 0.7151522, 0.0721750],
-        [0.0193339, 0.1191920, 0.9503041],
-    ])
-    return rgb @ m.T
+    # Binary threshold per channel
+    ro = ri > 128
+    go = gi > 128
+    bo = bi > 128
 
-
-def _xyz_to_lab(xyz: np.ndarray) -> np.ndarray:
-    """Convert CIE XYZ to CIELAB."""
-    ref = np.array([0.95047, 1.00000, 1.08883])
-    xyz = xyz / ref
-
-    def f(t):
-        delta = 6 / 29
-        return np.where(t > delta**3, t ** (1/3), t / (3 * delta**2) + 4/29)
-
-    fx, fy, fz = f(xyz[..., 0]), f(xyz[..., 1]), f(xyz[..., 2])
-    L = 116 * fy - 16
-    a = 500 * (fx - fy)
-    b = 200 * (fy - fz)
-    return np.stack([L, a, b], axis=-1)
-
-
-def _rgb_to_lab(rgb: np.ndarray) -> np.ndarray:
-    """Convert sRGB [0,255] to CIELAB."""
-    linear = _srgb_to_linear(rgb)
-    xyz = _linear_to_xyz(linear)
-    return _xyz_to_lab(xyz)
+    if ro and go and not bo:
+        return "YELLOW"
+    if ro and not go and not bo:
+        return "RED"
+    if not ro and go and not bo:
+        return "GREEN"
+    if not ro and not go and bo:
+        return "BLUE"
+    if not ro and go and bo:
+        return "GREEN"  # cyan → green
+    if ro and not go and bo:
+        return "RED"    # magenta → red
+    if ro and go and bo:
+        return "WHITE"
+    return "BLACK"
 
 
 def dither_for_display(image: Image.Image, config: Config) -> Image.Image:
@@ -69,7 +63,7 @@ def dither_for_display(image: Image.Image, config: Config) -> Image.Image:
     img = ImageEnhance.Contrast(img).enhance(1.2)
     img = ImageEnhance.Color(img).enhance(1.3)
 
-    img = _floyd_steinberg_dither(img, SPECTRA6_PALETTE)
+    img = _floyd_steinberg_dither(img)
 
     return img
 
@@ -94,30 +88,22 @@ def _resize_crop(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
     return img.crop((left, top, left + target_w, top + target_h))
 
 
-def _floyd_steinberg_dither(
-    img: Image.Image,
-    palette: list[tuple[int, int, int]],
-) -> Image.Image:
-    """Floyd-Steinberg dithering with CIELAB perceptual distance."""
+def _floyd_steinberg_dither(img: Image.Image) -> Image.Image:
+    """Floyd-Steinberg dithering using the driver's own color classification."""
     pixels = np.array(img, dtype=np.float64)
     h, w, _ = pixels.shape
-
-    # Pre-convert palette to LAB
-    pal_rgb = np.array(palette, dtype=np.float64)
-    pal_lab = _rgb_to_lab(pal_rgb)
+    palette = SPECTRA6_PALETTE
 
     for y in range(h):
         for x in range(w):
-            old_rgb = pixels[y, x].copy()
+            old = pixels[y, x].copy()
 
-            # Find nearest palette color in CIELAB space
-            old_lab = _rgb_to_lab(old_rgb)
-            dists = np.sum((pal_lab - old_lab) ** 2, axis=1)
-            nearest_idx = np.argmin(dists)
-            new_rgb = pal_rgb[nearest_idx]
+            # Classify using the same logic as the display driver
+            color_name = _driver_classify(old[0], old[1], old[2])
+            new = np.array(palette[color_name], dtype=np.float64)
 
-            pixels[y, x] = new_rgb
-            error = old_rgb - new_rgb
+            pixels[y, x] = new
+            error = old - new
 
             # Distribute error to neighbors
             if x + 1 < w:
