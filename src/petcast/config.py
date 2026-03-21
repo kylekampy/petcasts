@@ -49,6 +49,12 @@ class Pet:
 
 
 @dataclass
+class PetGroup:
+    name: str
+    pet_names: list[str]
+
+
+@dataclass
 class Config:
     location: LocationConfig
     styles: list[str]
@@ -57,6 +63,7 @@ class Config:
     output: OutputConfig
     cooldowns: CooldownConfig
     pets: list[Pet] = field(default_factory=list)
+    groups: list[PetGroup] = field(default_factory=list)
 
 
 def load_config(root: Path) -> Config:
@@ -100,5 +107,9 @@ def load_config(root: Path) -> Config:
         pets=[
             Pet(name=p["name"], description=p["description"], photos=p.get("photos") or [])
             for p in pets_raw["pets"]
+        ],
+        groups=[
+            PetGroup(name=g["name"], pet_names=g["pets"])
+            for g in pets_raw.get("groups", [])
         ],
     )

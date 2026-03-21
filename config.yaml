@@ -6,16 +6,18 @@ location:
   longitude: -91.1161
 
 styles:
-  - 'Studio Ghibli watercolor'
-  - 'Pixar 3D render'
-  - 'retro pixel art'
-  - 'impressionist oil painting'
-  - 'comic book pop art'
-  - 'Japanese woodblock print'
-  - 'claymation stop-motion'
-  - 'art nouveau poster'
-  - 'vaporwave synthwave'
-  - "children's book illustration"
+  # Bold lines, flat colors, high contrast — styles that survive
+  # 6-color dithering on an 800x480 e-ink display
+  - 'comic book pop art with bold outlines and flat colors'
+  - 'Japanese woodblock print with strong black outlines'
+  - 'retro pixel art with chunky pixels and limited palette'
+  - 'paper cut-out collage with bold shapes and solid colors'
+  - 'linocut print with high contrast black and white plus spot color'
+  - 'vintage travel poster with flat graphic shapes'
+  - "children's book illustration with thick outlines and bright flat colors"
+  - 'stained glass window style with black leading and vivid color blocks'
+  - 'folk art painting with simple shapes and bold patterns'
+  - 'screen print with limited flat color layers'
 
 openai:
   model: 'gpt-image-1.5'

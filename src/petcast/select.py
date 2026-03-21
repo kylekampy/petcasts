@@ -12,7 +12,7 @@ from petcast.config import Config, Pet
 @dataclass
 class Selection:
     pets: list[Pet]
-    photo: str  # single reference photo filename
+    photo: str  # reference photo filename — pets are derived from this
     style: str
 
 
@@ -32,9 +32,17 @@ def save_history(root: Path, history: list[dict]) -> None:
 
 
 def select(config: Config, root: Path) -> Selection:
-    """Pick all pets, a random reference photo, and a style."""
+    """Pick a random photo, find which pets are in it, pick a style."""
     history = load_history(root)
     now = datetime.now()
+
+    # Build reverse index: photo -> list of pets that list it
+    photo_to_pets: dict[str, list[Pet]] = {}
+    for pet in config.pets:
+        for photo in pet.photos:
+            photo_to_pets.setdefault(photo, []).append(pet)
+
+    all_photos = list(photo_to_pets.keys())
 
     # Gather recently used items
     recent_photos: set[str] = set()
@@ -45,31 +53,24 @@ def select(config: Config, root: Path) -> Selection:
         age = now - entry_date
 
         if age < timedelta(days=config.cooldowns.photo_days):
-            for photo in entry.get("photos", []):
-                recent_photos.add(photo)
-            # Also handle old single-photo format
             if "photo" in entry:
                 recent_photos.add(entry["photo"])
+            for photo in entry.get("photos", []):
+                recent_photos.add(photo)
 
         if age < timedelta(days=config.cooldowns.combo_days):
             style = entry.get("style", "")
             if style:
                 recent_styles[style] = recent_styles.get(style, 0) + 1
 
-    # Always use all pets
-    chosen_pets = list(config.pets)
-
-    # Collect all photos across all pets, pick one not recently used
-    all_photos: list[str] = []
-    for pet in chosen_pets:
-        all_photos.extend(pet.photos)
-    # Deduplicate while preserving order
-    all_photos = list(dict.fromkeys(all_photos))
-
+    # Pick a photo not recently used
     available = [p for p in all_photos if p not in recent_photos]
     if not available:
         available = all_photos
     chosen_photo = random.choice(available)
+
+    # Pets are those who list this photo
+    chosen_pets = photo_to_pets[chosen_photo]
 
     # Pick style, preferring less-used ones
     style_weights = []

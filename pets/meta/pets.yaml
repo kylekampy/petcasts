@@ -3,6 +3,20 @@
 #   - name: display name
 #   - description: physical appearance for AI image generation
 #   - photos: list of filenames in pets/input/
+#
+# Groups define which pets lived together and can appear in the same image.
+
+groups:
+  - name: "the OGs"
+    pets: [Zeya, Patrick, Pixel, Kona]
+  - name: "the recent pack"
+    pets: [Margot, Zeya, Pebble, Mumford, Fennec]
+  - name: "the recent dogs"
+    pets: [Margot, Zeya, Pebble]
+  - name: "the current pack"
+    pets: [Margot, Pebble, Mumford, Fennec]
+  - name: "the cats"
+    pets: [Mumford, Fennec]
 
 pets:
   - name: 'Margot'
@@ -55,6 +69,7 @@ pets:
       - 'margot_pebble_zeya_on_deck.png'
       - 'zeya_mumford_pebble_fennec_margot_couch_pile.png'
       - 'pebble_fennec_cuddling.png'
+      - 'margot_zeya_pebble_with_owners.png'
   - name: 'Mumford'
     description: >-
       A domestic shorthair cat. Warm buff/cream coat with faint tabby striping, more

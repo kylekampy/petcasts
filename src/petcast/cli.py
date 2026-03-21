@@ -26,6 +26,11 @@ def main() -> None:
     sel.add_argument("--root", type=Path, default=Path("."), help="Project root directory")
     sel.add_argument("--count", type=int, default=5, help="Number of selections to test")
 
+    # serve
+    srv = sub.add_parser("serve", help="Start HTTP server for frame-driven generation")
+    srv.add_argument("--root", type=Path, default=Path("."), help="Project root directory")
+    srv.add_argument("--port", type=int, default=8000, help="Port to listen on")
+
     args = parser.parse_args()
 
     if args.command == "generate":
@@ -53,6 +58,10 @@ def main() -> None:
             sel_result = select(config, args.root.resolve())
             pets = ", ".join(p.name for p in sel_result.pets)
             print(f"  #{i + 1}: {pets} | {sel_result.photo} | {sel_result.style}")
+
+    elif args.command == "serve":
+        from petcast.server import serve
+        serve(args.root.resolve(), port=args.port)
 
     else:
         parser.print_help()

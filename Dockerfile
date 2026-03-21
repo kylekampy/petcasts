@@ -22,4 +22,5 @@ RUN mkdir -p output/debug output/archive
 
 RUN pip install --no-cache-dir .
 
-ENTRYPOINT ["python", "-m", "petcast"]
+EXPOSE 8000
+CMD ["python", "-m", "petcast", "serve"]
