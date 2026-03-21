@@ -53,11 +53,6 @@ def _build_prompt(
     selection: Selection, scene: SceneDescription, forecast: Forecast,
     battery_pct: float | None = None,
 ) -> str:
-    pet_names = ", ".join(p.name for p in selection.pets)
-    pet_descs = "; ".join(
-        f"{p.name}: {p.description}" for p in selection.pets
-    )
-
     today = datetime.now(ZoneInfo(forecast["timezone"]))
     day_name = today.strftime("%A")
     day_spelled = " ".join(day_name.upper())
@@ -99,13 +94,15 @@ MOOD: {scene.mood}
 COMPOSITION: {scene.constraints}
 
 WEATHER PANEL in the {scene.overlay_position} corner, rendered in the {selection.style} style:
-- Weather icon for "{weather_summary}" ({forecast['precip_chance']}% precip — \
-{"NO rain in the icon, just clouds" if forecast['precip_chance'] < 30 else "show rain"})
+- Weather icon: draw EXACTLY {forecast['weather_icon_desc']}. \
+Do NOT add rain, raindrops, or precipitation to the icon unless the description says to.
 - "{day_name}, {month_name} {day_num}" (spell exactly: {day_spelled})
 - "{temp_str}"\
 {f"""
 - LOW BATTERY icon: {battery_pct:.0f}%""" if battery_pct is not None and battery_pct < 15 else ""}
-Inset the panel 15% from top/bottom edges, 5% from sides (image will be cropped to wider ratio).
+PANEL POSITION: Place the panel's CENTER at roughly 20% from the edge of the image. \
+The panel must be fully visible with comfortable margin from all edges — especially top \
+and bottom since those will be cropped ~7%.
 
 RULES:
 - Exactly {num_pets} pets, each with ONE head. No duplicates.

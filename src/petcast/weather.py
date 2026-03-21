@@ -66,17 +66,51 @@ WMO_ICONS: dict[int, str] = {
 }
 
 
+# Exact icon descriptions for the image generator — no ambiguity
+ICON_DESCRIPTIONS: dict[int, str] = {
+    0: "a bright yellow sun with rays, no clouds",
+    1: "a yellow sun with one small white cloud partially covering it",
+    2: "a yellow sun half-hidden behind a white cloud",
+    3: "two or three plain gray/white clouds, NO rain, NO sun",
+    45: "wavy horizontal fog lines",
+    48: "wavy horizontal fog lines",
+    51: "a cloud with a few small raindrops",
+    53: "a cloud with several raindrops",
+    55: "a dark cloud with heavy raindrops",
+    56: "a cloud with small icy raindrops",
+    57: "a dark cloud with icy raindrops",
+    61: "a cloud with a few raindrops",
+    63: "a cloud with several raindrops",
+    65: "a dark cloud with heavy rain lines",
+    66: "a cloud with icy raindrops",
+    67: "a dark cloud with heavy icy rain",
+    71: "a cloud with a few small snowflakes falling",
+    73: "a cloud with several snowflakes falling",
+    75: "a dark cloud with heavy snowflakes",
+    77: "a cloud with tiny snow grains",
+    80: "a cloud with a few raindrops",
+    81: "a cloud with several raindrops",
+    82: "a dark cloud with heavy rain lines",
+    85: "a cloud with a few snowflakes",
+    86: "a dark cloud with heavy snowflakes",
+    95: "a dark cloud with a yellow lightning bolt",
+    96: "a dark cloud with lightning and small hailstones",
+    99: "a dark cloud with lightning and large hailstones",
+}
+
+
 class Forecast(TypedDict):
     weather_code: int
     weather_desc: str
     weather_icon: str
+    weather_icon_desc: str  # exact description for image generation
     high_f: float
     low_f: float
     precip_chance: int
     wind_mph: float
     sunrise: str
     sunset: str
-    timezone: str  # e.g. "America/Chicago"
+    timezone: str
 
 
 def fetch_forecast(config: Config) -> Forecast:
@@ -117,4 +151,5 @@ def fetch_forecast(config: Config) -> Forecast:
         sunrise=daily["sunrise"][0],
         sunset=daily["sunset"][0],
         timezone=data.get("timezone", "UTC"),
+        weather_icon_desc=ICON_DESCRIPTIONS.get(code, "a plain cloud"),
     )
