@@ -1,55 +1,19 @@
-"""Spectra 6 e-ink dithering pipeline.
-
-Matches the ESPHome epaper_spi Spectra E6 driver's color classification:
-grayscale check (spread < 50), then binary threshold at 128 per channel.
-"""
+"""Spectra 6 e-ink dithering pipeline."""
 
 import numpy as np
 from PIL import Image, ImageEnhance
 
 from petcast.config import Config
 
-# Output palette values — one per driver bucket
-# These must pass through the driver's classification correctly
-SPECTRA6_PALETTE = {
-    "BLACK": (0, 0, 0),
-    "WHITE": (255, 255, 255),
-    "RED": (200, 0, 0),
-    "GREEN": (0, 150, 0),
-    "BLUE": (0, 0, 200),
-    "YELLOW": (255, 230, 0),
-}
-
-
-def _driver_classify(r: float, g: float, b: float) -> str:
-    """Replicate the ESPHome Spectra E6 driver's color classification."""
-    ri, gi, bi = int(np.clip(r, 0, 255)), int(np.clip(g, 0, 255)), int(np.clip(b, 0, 255))
-    spread = max(ri, gi, bi) - min(ri, gi, bi)
-
-    if spread < 50:
-        # Grayscale
-        return "WHITE" if (ri + gi + bi) > 382 else "BLACK"
-
-    # Binary threshold per channel
-    ro = ri > 128
-    go = gi > 128
-    bo = bi > 128
-
-    if ro and go and not bo:
-        return "YELLOW"
-    if ro and not go and not bo:
-        return "RED"
-    if not ro and go and not bo:
-        return "GREEN"
-    if not ro and not go and bo:
-        return "BLUE"
-    if not ro and go and bo:
-        return "GREEN"  # cyan → green
-    if ro and not go and bo:
-        return "RED"    # magenta → red
-    if ro and go and bo:
-        return "WHITE"
-    return "BLACK"
+# Spectra 6 palette (sRGB values)
+SPECTRA6_PALETTE = [
+    (0, 0, 0),        # Black
+    (255, 255, 255),   # White
+    (200, 0, 0),       # Red
+    (0, 150, 0),       # Green
+    (0, 0, 200),       # Blue
+    (255, 230, 0),     # Yellow
+]
 
 
 def dither_for_display(image: Image.Image, config: Config) -> Image.Image:
@@ -59,11 +23,10 @@ def dither_for_display(image: Image.Image, config: Config) -> Image.Image:
     img = image.convert("RGB")
     img = _resize_crop(img, w, h)
 
-    # Boost contrast and saturation for e-ink
     img = ImageEnhance.Contrast(img).enhance(1.2)
     img = ImageEnhance.Color(img).enhance(1.3)
 
-    img = _floyd_steinberg_dither(img)
+    img = _floyd_steinberg_dither(img, SPECTRA6_PALETTE)
 
     return img
 
@@ -88,48 +51,38 @@ def _resize_crop(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
     return img.crop((left, top, left + target_w, top + target_h))
 
 
-def _floyd_steinberg_dither(img: Image.Image) -> Image.Image:
-    """Floyd-Steinberg dithering using the driver's own color classification."""
+def _floyd_steinberg_dither(
+    img: Image.Image, palette: list[tuple[int, int, int]]
+) -> Image.Image:
+    """Apply Floyd-Steinberg dithering against a fixed palette."""
     pixels = np.array(img, dtype=np.float64)
     h, w, _ = pixels.shape
+    pal = np.array(palette, dtype=np.float64)
+    n_colors = len(palette)
 
-    # Pre-build lookup array for palette RGB values
-    pal_lookup = {
-        "BLACK": np.array((0, 0, 0), dtype=np.float64),
-        "WHITE": np.array((255, 255, 255), dtype=np.float64),
-        "RED": np.array((200, 0, 0), dtype=np.float64),
-        "GREEN": np.array((0, 150, 0), dtype=np.float64),
-        "BLUE": np.array((0, 0, 200), dtype=np.float64),
-        "YELLOW": np.array((255, 230, 0), dtype=np.float64),
-    }
-
-    # Inline the driver classify + error diffusion for speed
     for y in range(h):
         row = pixels[y]
         next_row = pixels[y + 1] if y + 1 < h else None
         for x in range(w):
             r, g, b = row[x]
 
-            # Driver classification (inlined)
-            ri, gi, bi = int(min(max(r, 0), 255)), int(min(max(g, 0), 255)), int(min(max(b, 0), 255))
-            spread = max(ri, gi, bi) - min(ri, gi, bi)
-            if spread < 50:
-                name = "WHITE" if (ri + gi + bi) > 382 else "BLACK"
-            elif ri > 128:
-                if gi > 128:
-                    name = "WHITE" if bi > 128 else "YELLOW"
-                else:
-                    name = "RED"  # covers magenta (bo=True) too
-            elif gi > 128:
-                name = "GREEN"  # covers cyan (bo=True) too
-            elif bi > 128:
-                name = "BLUE"
-            else:
-                name = "BLACK"
+            # Find nearest palette color (Euclidean distance, inlined)
+            best_idx = 0
+            best_dist = float("inf")
+            for i in range(n_colors):
+                dr = r - pal[i, 0]
+                dg = g - pal[i, 1]
+                db = b - pal[i, 2]
+                d = dr * dr + dg * dg + db * db
+                if d < best_dist:
+                    best_dist = d
+                    best_idx = i
 
-            new = pal_lookup[name]
-            er, eg, eb = r - new[0], g - new[1], b - new[2]
-            row[x] = new
+            nr, ng, nb = pal[best_idx]
+            er, eg, eb = r - nr, g - ng, b - nb
+            row[x, 0] = nr
+            row[x, 1] = ng
+            row[x, 2] = nb
 
             if x + 1 < w:
                 row[x + 1, 0] += er * 0.4375
