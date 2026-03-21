@@ -84,7 +84,24 @@ Designed for the [Seeed reTerminal E1002](https://www.seeedstudio.com/reTerminal
 ### Green button
 
 - **Tap** (while asleep): wake up, trigger regeneration, wait 2 minutes, fetch and display the new image.
-- **Hold 2 seconds** (while awake): enter deep sleep until 4:58 AM.
+
+### Right white button
+
+- **Tap** (while awake): enter deep sleep until 4:58 AM.
+
+### Battery
+
+The frame sends its battery percentage with each generation request. It shows up as a small battery icon in the forecast panel. When battery drops below 15%, the pets in the scene will look worried about running out of energy.
+
+You can test battery behavior locally:
+
+```bash
+# Normal battery
+uv run python -m petcast generate --debug --battery 72
+
+# Low battery — pets get anxious
+uv run python -m petcast generate --debug --battery 8
+```
 
 ### ESPHome setup
 
@@ -93,7 +110,6 @@ Designed for the [Seeed reTerminal E1002](https://www.seeedstudio.com/reTerminal
    ```yaml
    wifi_ssid: "your-wifi-ssid"
    wifi_password: "your-wifi-password"
-   ota_password: "your-ota-password"
    ap_password: "your-fallback-ap-password"
    ```
 3. Update the server URL in `petcast-frame.yaml` (default: `http://mini:7777`)
@@ -149,7 +165,7 @@ styles:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/generate` | POST | Trigger image generation (returns 202, runs async) |
+| `/api/generate` | POST | Trigger image generation (returns 202, runs async). Optional JSON body: `{"battery": 85}` |
 | `/api/status` | GET | Latest metadata + `generating` flag |
 | `/api/archive` | GET | List all archived images with metadata |
 | `/output/latest.png` | GET | The latest generated image |
