@@ -81,7 +81,8 @@ Composition: {scene.constraints}
 
 WEATHER FORECAST PANEL: Include a small forecast panel in the {scene.overlay_position} area, \
 rendered in the same {selection.style} art style as the rest of the image. The panel should show:
-- A stylized weather icon (sun, clouds, rain, snow, etc.) for "{weather_summary}"
+- A stylized weather icon for "{weather_summary}" ({forecast['precip_chance']}% chance of rain — \
+{"DO NOT show rain or raindrops in the icon, just clouds" if forecast['precip_chance'] < 30 else "rain is likely, show rain in the icon"})
 - The text "{day_name}, {month_name} {day_num}" (spell it exactly: {day_spelled})
 - The text "{temp_str}"\
 {f"""
