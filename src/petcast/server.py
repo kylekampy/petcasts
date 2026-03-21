@@ -25,6 +25,8 @@ class PetcastHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/status":
             self._handle_status()
+        elif self.path == "/api/archive":
+            self._handle_archive_list()
         elif self.path.startswith("/output/"):
             self._serve_output_file()
         else:
@@ -83,6 +85,22 @@ class PetcastHandler(SimpleHTTPRequestHandler):
                 "status": "no_image",
                 "generating": PetcastHandler._generating,
             })
+
+    def _handle_archive_list(self):
+        """List all archived images with their metadata."""
+        archive_dir = self.root / "output" / "archive"
+        images = []
+        if archive_dir.exists():
+            for png in sorted(archive_dir.rglob("*.png"), reverse=True):
+                rel = png.relative_to(self.root / "output")
+                entry = {"url": f"/output/{rel}", "file": str(rel)}
+                # Include metadata if available
+                meta_path = png.with_suffix(".json")
+                if meta_path.exists():
+                    with open(meta_path) as f:
+                        entry["metadata"] = json.load(f)
+                images.append(entry)
+        self._json_response(200, {"images": images})
 
     def _serve_output_file(self):
         """Serve files from the output directory."""

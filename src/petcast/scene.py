@@ -3,6 +3,7 @@
 import json
 from dataclasses import dataclass
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from openai import OpenAI
 
@@ -61,7 +62,7 @@ def generate_scene(
         if "scene" in entry:
             recent_activities.append(entry["scene"].get("activity", ""))
 
-    now = datetime.now()
+    now = datetime.now(ZoneInfo(forecast["timezone"]))
     date_str = now.strftime("%B %-d, %Y")
     month = now.month
     if month in (3, 4, 5):

@@ -1,8 +1,10 @@
 """Orchestrates the full petcast pipeline."""
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from PIL import Image
 
@@ -58,10 +60,23 @@ def run(root: Path, debug: bool = False) -> Path:
 
     # Step 7: Save outputs
     print("Saving outputs...")
-    final.save(config.output.latest, "PNG")
 
+    # Use the location's timezone for timestamps and file paths
+    tz = ZoneInfo(forecast["timezone"])
+    now = datetime.now(tz)
+    archive_dir = config.output.archive_dir / now.strftime("%Y/%m/%d")
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archive_path = archive_dir / f"petcast_{now.strftime('%H%M%S')}.png"
+    final.save(archive_path, "PNG")
+
+    # Symlink latest.png -> archive copy
+    latest = config.output.latest
+    latest.unlink(missing_ok=True)
+    os.symlink(archive_path.resolve(), latest)
+
+    # Save metadata
     metadata = {
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now.isoformat(),
         "pets": [p.name for p in selection.pets],
         "photo": selection.photo,
         "style": selection.style,
@@ -74,17 +89,18 @@ def run(root: Path, debug: bool = False) -> Path:
             "overlay_position": scene.overlay_position,
         },
     }
-    with open(config.output.metadata, "w") as f:
+
+    # Also save metadata alongside the archive image
+    archive_meta = archive_path.with_suffix(".json")
+    with open(archive_meta, "w") as f:
         json.dump(metadata, f, indent=2)
 
-    # Archive copy
-    now = datetime.now()
-    archive_dir = config.output.archive_dir / now.strftime("%Y/%m/%d")
-    archive_dir.mkdir(parents=True, exist_ok=True)
-    archive_path = archive_dir / f"petcast_{now.strftime('%H%M%S')}.png"
-    final.save(archive_path, "PNG")
+    # Symlink latest.json -> archive metadata
+    meta_latest = config.output.metadata
+    meta_latest.unlink(missing_ok=True)
+    os.symlink(archive_meta.resolve(), meta_latest)
 
-    print(f"Done! Saved to {config.output.latest}")
+    print(f"Done! Saved to {archive_path}")
     return config.output.latest
 
 

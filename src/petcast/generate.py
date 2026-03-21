@@ -4,6 +4,7 @@ import base64
 import io
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from openai import OpenAI
 from PIL import Image
@@ -55,7 +56,7 @@ def _build_prompt(
         f"{p.name}: {p.description}" for p in selection.pets
     )
 
-    today = datetime.now()
+    today = datetime.now(ZoneInfo(forecast["timezone"]))
     day_name = today.strftime("%A")
     day_spelled = " ".join(day_name.upper())
     month_name = today.strftime("%B")

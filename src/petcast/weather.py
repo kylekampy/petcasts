@@ -76,6 +76,7 @@ class Forecast(TypedDict):
     wind_mph: float
     sunrise: str
     sunset: str
+    timezone: str  # e.g. "America/Chicago"
 
 
 def fetch_forecast(config: Config) -> Forecast:
@@ -115,4 +116,5 @@ def fetch_forecast(config: Config) -> Forecast:
         wind_mph=daily["wind_speed_10m_max"][0],
         sunrise=daily["sunrise"][0],
         sunset=daily["sunset"][0],
+        timezone=data.get("timezone", "UTC"),
     )
