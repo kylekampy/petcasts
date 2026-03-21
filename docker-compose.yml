@@ -1,14 +1,12 @@
 services:
   petcast:
-    build: .
+    image: ghcr.io/kylekampy/petcasts:latest
     container_name: petcast
     ports:
-      - "8000:8000"
+      - "7777:7777"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
-      - ./pets/input:/app/pets/input:ro
-      - ./pets/meta:/app/pets/meta:ro
-      - ./pets/state:/app/pets/state
-      - ./output:/app/output
+      - /opt/volumes/petcast/state:/app/pets/state
+      - /opt/volumes/petcast/output:/app/output
     restart: unless-stopped

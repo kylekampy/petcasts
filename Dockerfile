@@ -22,5 +22,5 @@ RUN mkdir -p output/debug output/archive
 
 RUN pip install --no-cache-dir .
 
-EXPOSE 8000
+EXPOSE 7777
 CMD ["python", "-m", "petcast", "serve"]

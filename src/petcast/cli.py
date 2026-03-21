@@ -29,7 +29,7 @@ def main() -> None:
     # serve
     srv = sub.add_parser("serve", help="Start HTTP server for frame-driven generation")
     srv.add_argument("--root", type=Path, default=Path("."), help="Project root directory")
-    srv.add_argument("--port", type=int, default=8000, help="Port to listen on")
+    srv.add_argument("--port", type=int, default=7777, help="Port to listen on")
 
     args = parser.parse_args()
 

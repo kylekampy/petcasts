@@ -49,13 +49,13 @@ uv run python -m petcast serve
 docker compose up -d
 
 # Trigger a generation
-curl -X POST http://localhost:8000/api/generate
+curl -X POST http://localhost:7777/api/generate
 
 # Check status
-curl http://localhost:8000/api/status
+curl http://localhost:7777/api/status
 
 # Fetch the image
-curl http://localhost:8000/output/latest.png -o forecast.png
+curl http://localhost:7777/output/latest.png -o forecast.png
 ```
 
 The container is also published to GitHub Container Registry:

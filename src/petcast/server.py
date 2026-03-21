@@ -122,7 +122,7 @@ class PetcastHandler(SimpleHTTPRequestHandler):
         print(f"[server] {args[0]}")
 
 
-def serve(root: Path, port: int = 8000):
+def serve(root: Path, port: int = 7777):
     """Start the petcast HTTP server."""
     PetcastHandler.root = root.resolve()
 
