@@ -13,9 +13,9 @@ Petcast picks your pets, checks the weather, generates a styled scene with an in
 
 1. **Pick a photo** — randomly selects a reference photo from your collection. The pets in that photo become the cast for the day.
 2. **Fetch weather** — pulls today's forecast from [Open-Meteo](https://open-meteo.com/) (free, no API key needed).
-3. **Generate a scene** — GPT-4.1 designs a scene based on the pets, weather, season, location, and a randomly chosen art style.
-4. **Generate the image** — gpt-image-1.5 renders the scene with a baked-in forecast panel, using the reference photo for pet likeness.
-5. **Dither** — Floyd-Steinberg dithers the image to the Spectra 6 e-ink palette (black, white, red, green, blue, yellow) at 800x480.
+3. **Generate a scene** — GPT-4o-mini designs an anthropomorphic scene where the pets do human-like activities (sipping coffee, flying kites, reading books) appropriate to the weather and season, described in the visual language of a randomly chosen art style.
+4. **Generate the image** — gpt-image-1.5 renders the scene with a baked-in forecast panel (weather icon, date, temperature), using the reference photo for pet likeness.
+5. **Dither** — Atkinson dithers the image to the Spectra 6 e-ink palette (black, white, red, green, blue, yellow) at 800x480.
 6. **Serve** — an HTTP server lets your display fetch the image whenever it's ready.
 
 ## Quick start
@@ -72,15 +72,15 @@ curl http://localhost:7777/api/archive
 
 ## Display
 
-Designed for the [Seeed reTerminal E1002](https://www.seeedstudio.com/reTerminal-E10-2-p-6366.html) (800x480, Spectra 6 color e-ink) running [ESPHome](https://esphome.io/).
+Designed for the [Seeed reTerminal E1002](https://www.seeedstudio.com/reTerminal-E1002-p-6533.html) (800x480, Spectra 6 color e-ink) running [ESPHome](https://esphome.io/).
 
 ### Daily schedule
 
-| Time | Action |
-|------|--------|
+| Time    | Action                                                                 |
+| ------- | ---------------------------------------------------------------------- |
 | 4:58 AM | Wake from deep sleep, POST `/api/generate` to trigger image generation |
-| 5:00 AM | GET `/output/latest.png`, update the e-ink display |
-| 5:02 AM | Deep sleep until tomorrow |
+| 5:00 AM | GET `/output/latest.png`, update the e-ink display                     |
+| 5:02 AM | Deep sleep until tomorrow                                              |
 
 ### Green button
 
@@ -130,20 +130,20 @@ uv run python -m petcast generate --debug --battery 8
 
 ```yaml
 pets:
-  - name: 'Luna'
+  - name: "Luna"
     description: >-
       A golden retriever. Fluffy cream coat, dark eyes, always smiling.
       Loves swimming and carrying sticks.
     photos:
-      - 'luna_and_max.png'
-      - 'luna_solo.png'
-  - name: 'Max'
+      - "luna_and_max.png"
+      - "luna_solo.png"
+  - name: "Max"
     description: >-
       A black lab. Sleek short coat, brown eyes, floppy ears.
       Ball obsessed. Will not give it back.
     photos:
-      - 'luna_and_max.png'
-      - 'max_sleeping.png'
+      - "luna_and_max.png"
+      - "max_sleeping.png"
 ```
 
 Photos define natural groupings — if Luna and Max appear in `luna_and_max.png`, they'll sometimes be generated together. Solo photos mean solo scenes.
@@ -152,27 +152,27 @@ Photos define natural groupings — if Luna and Max appear in `luna_and_max.png`
 
 ```yaml
 location:
-  name: 'Your City'
+  name: "Your City"
   latitude: 40.7128
   longitude: -74.0060
 
 styles:
-  - 'comic book pop art with bold outlines and flat colors'
-  - 'Japanese woodblock print with strong black outlines'
+  - "comic book pop art with bold outlines and flat colors"
+  - "Japanese woodblock print with strong black outlines"
   # ... add styles that work well with e-ink dithering
 ```
 
 ## API
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/generate` | POST | Trigger image generation (returns 202, runs async). Optional JSON body: `{"battery": 85}` |
-| `/api/status` | GET | Latest metadata + `generating` flag |
-| `/api/archive` | GET | List all archived images with metadata |
-| `/output/latest.png` | GET | The latest generated image |
-| `/output/latest.json` | GET | The latest metadata |
-| `/output/archive/...` | GET | Archived images by date |
+| Endpoint              | Method | Description                                                                               |
+| --------------------- | ------ | ----------------------------------------------------------------------------------------- |
+| `/api/generate`       | POST   | Trigger image generation (returns 202, runs async). Optional JSON body: `{"battery": 85}` |
+| `/api/status`         | GET    | Latest metadata + `generating` flag                                                       |
+| `/api/archive`        | GET    | List all archived images with metadata                                                    |
+| `/output/latest.png`  | GET    | The latest generated image                                                                |
+| `/output/latest.json` | GET    | The latest metadata                                                                       |
+| `/output/archive/...` | GET    | Archived images by date                                                                   |
 
 ## Cost
 
-~$0.06 per generation with gpt-image-1.5. At one image per day, that's about **$1.70/month**.
+~$0.04 per generation (gpt-image-1.5 for the image + gpt-4o-mini for the scene). At one image per day, that's about **$1.20/month**.
