@@ -1,7 +1,7 @@
 """Spectra 6 e-ink dithering pipeline.
 
-Uses calibrated display colors for dithering decisions, then remaps to
-reference palette values that the display driver expects.
+Uses CIELAB color space for perceptually accurate nearest-color matching,
+then outputs reference palette values for the display driver.
 """
 
 import numpy as np
@@ -10,7 +10,7 @@ from PIL import Image, ImageEnhance
 from petcast.config import Config
 
 # What the colors ACTUALLY look like on the Spectra 6 display (calibrated)
-# Used for dithering decisions (nearest-color matching)
+# Used for dithering decisions (nearest-color matching in CIELAB space)
 DISPLAY_COLORS = [
     (0, 0, 0),          # Black
     (255, 255, 255),     # White
@@ -21,7 +21,6 @@ DISPLAY_COLORS = [
 ]
 
 # What the display driver expects in the PNG (reference values)
-# The driver maps these to the actual e-ink pigments
 REFERENCE_PALETTE = [
     (0, 0, 0),          # Black
     (255, 255, 255),     # White
@@ -30,6 +29,47 @@ REFERENCE_PALETTE = [
     (0, 0, 255),         # Blue
     (255, 255, 0),       # Yellow
 ]
+
+
+def _srgb_to_linear(c: np.ndarray) -> np.ndarray:
+    """Convert sRGB [0,255] to linear RGB [0,1]."""
+    c = np.clip(c, 0, 255) / 255.0
+    return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+
+
+def _linear_to_xyz(rgb: np.ndarray) -> np.ndarray:
+    """Convert linear RGB to CIE XYZ."""
+    # sRGB to XYZ matrix (D65)
+    m = np.array([
+        [0.4124564, 0.3575761, 0.1804375],
+        [0.2126729, 0.7151522, 0.0721750],
+        [0.0193339, 0.1191920, 0.9503041],
+    ])
+    return rgb @ m.T
+
+
+def _xyz_to_lab(xyz: np.ndarray) -> np.ndarray:
+    """Convert CIE XYZ to CIELAB."""
+    # D65 white point
+    ref = np.array([0.95047, 1.00000, 1.08883])
+    xyz = xyz / ref
+
+    def f(t):
+        delta = 6 / 29
+        return np.where(t > delta**3, t ** (1/3), t / (3 * delta**2) + 4/29)
+
+    fx, fy, fz = f(xyz[..., 0]), f(xyz[..., 1]), f(xyz[..., 2])
+    L = 116 * fy - 16
+    a = 500 * (fx - fy)
+    b = 200 * (fy - fz)
+    return np.stack([L, a, b], axis=-1)
+
+
+def _rgb_to_lab(rgb: np.ndarray) -> np.ndarray:
+    """Convert sRGB [0,255] to CIELAB."""
+    linear = _srgb_to_linear(rgb)
+    xyz = _linear_to_xyz(linear)
+    return _xyz_to_lab(xyz)
 
 
 def dither_for_display(image: Image.Image, config: Config) -> Image.Image:
@@ -43,7 +83,7 @@ def dither_for_display(image: Image.Image, config: Config) -> Image.Image:
     img = ImageEnhance.Contrast(img).enhance(1.2)
     img = ImageEnhance.Color(img).enhance(1.3)
 
-    # Dither against calibrated display colors, then remap to reference palette
+    # Dither using CIELAB perceptual distance
     img = _floyd_steinberg_dither(img, DISPLAY_COLORS, REFERENCE_PALETTE)
 
     return img
@@ -74,23 +114,30 @@ def _floyd_steinberg_dither(
     display_colors: list[tuple[int, int, int]],
     reference_palette: list[tuple[int, int, int]],
 ) -> Image.Image:
-    """Dither using display colors for decisions, output reference palette values."""
+    """Dither using CIELAB distance for perceptual accuracy."""
     pixels = np.array(img, dtype=np.float64)
     h, w, _ = pixels.shape
-    display = np.array(display_colors, dtype=np.float64)
+
+    # Pre-convert display palette to LAB
+    display_rgb = np.array(display_colors, dtype=np.float64)
+    display_lab = _rgb_to_lab(display_rgb)
     reference = np.array(reference_palette, dtype=np.uint8)
 
     for y in range(h):
         for x in range(w):
-            old = pixels[y, x].copy()
-            # Find nearest DISPLAY color (what it actually looks like)
-            dists = np.sum((display - old) ** 2, axis=1)
+            old_rgb = pixels[y, x].copy()
+
+            # Convert current pixel to LAB for perceptual comparison
+            old_lab = _rgb_to_lab(old_rgb)
+
+            # Find nearest display color in LAB space
+            dists = np.sum((display_lab - old_lab) ** 2, axis=1)
             nearest_idx = np.argmin(dists)
 
-            # Error diffusion uses display color (perceptually accurate)
-            error = old - display[nearest_idx]
+            # Error diffusion in RGB space (using display color)
+            error = old_rgb - display_rgb[nearest_idx]
 
-            # But write the REFERENCE color (what the driver expects)
+            # Write reference palette color to output
             pixels[y, x] = reference[nearest_idx]
 
             # Distribute error to neighbors
