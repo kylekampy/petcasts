@@ -22,8 +22,8 @@ esphome:
           then:
             - logger.log: 'Woke from green button — regenerating'
             - script.execute: trigger_generation
-            - logger.log: 'Waiting 90s for generation to complete...'
-            - delay: 90s
+            - logger.log: 'Waiting 2min for generation to complete...'
+            - delay: 120s
       # Always fetch and display the latest image on boot
       - logger.log: 'Fetching latest image from server...'
       - component.update: petcast_image
@@ -66,9 +66,9 @@ time:
       - 0.pool.ntp.org
       - 1.pool.ntp.org
     on_time:
-      # 4:55 AM — trigger image generation
+      # 4:58 AM — trigger image generation
       - seconds: 0
-        minutes: 55
+        minutes: 58
         hours: 4
         then:
           - script.execute: trigger_generation
@@ -87,7 +87,7 @@ time:
           - deep_sleep.enter:
               id: deep_sleep_ctrl
               time_id: sntp_time
-              until: '04:55:00'
+              until: '04:58:00'
 
 spi:
   clk_pin: GPIO7
@@ -142,7 +142,7 @@ binary_sensor:
         - deep_sleep.enter:
             id: deep_sleep_ctrl
             time_id: sntp_time
-            until: '04:55:00'
+            until: '04:58:00'
 
 script:
   - id: trigger_generation

@@ -77,13 +77,14 @@ Designed for the [Seeed reTerminal E1002](https://www.seeedstudio.com/reTerminal
 
 | Time | Action |
 |------|--------|
-| 4:55 AM | Wake from deep sleep, POST `/api/generate` to trigger image generation |
+| 4:58 AM | Wake from deep sleep, POST `/api/generate` to trigger image generation |
 | 5:00 AM | GET `/output/latest.png`, update the e-ink display |
 | 5:02 AM | Deep sleep until tomorrow |
 
 ### Green button
 
-Press anytime to regenerate — triggers a new image, waits 90 seconds, then refreshes the display. Useful if you don't like today's image.
+- **Tap** (while asleep): wake up, trigger regeneration, wait 2 minutes, fetch and display the new image.
+- **Hold 2 seconds** (while awake): enter deep sleep until 4:58 AM.
 
 ### ESPHome setup
 
