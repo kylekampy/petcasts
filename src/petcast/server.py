@@ -43,6 +43,16 @@ class PetcastHandler(SimpleHTTPRequestHandler):
                 return
             PetcastHandler._generating = True
 
+        # Parse optional battery percentage from POST body
+        battery_pct = None
+        content_length = int(self.headers.get("Content-Length", 0))
+        if content_length > 0:
+            try:
+                body = json.loads(self.rfile.read(content_length))
+                battery_pct = body.get("battery")
+            except (json.JSONDecodeError, ValueError):
+                pass
+
         # Return 202 immediately
         self._json_response(202, {
             "status": "accepted",
@@ -52,16 +62,20 @@ class PetcastHandler(SimpleHTTPRequestHandler):
         # Run pipeline in background thread
         thread = threading.Thread(
             target=self._run_pipeline,
+            args=(battery_pct,),
             daemon=True,
         )
         thread.start()
 
-    def _run_pipeline(self):
+    def _run_pipeline(self, battery_pct: float | None = None):
         """Run the generation pipeline in background."""
         try:
-            print(f"[server] Starting generation...")
+            if battery_pct is not None:
+                print(f"[server] Starting generation (battery: {battery_pct:.0f}%)...")
+            else:
+                print(f"[server] Starting generation...")
             start = time.time()
-            run(self.root, debug=False)
+            run(self.root, debug=False, battery_pct=battery_pct)
             elapsed = time.time() - start
             print(f"[server] Generation complete in {elapsed:.1f}s")
         except Exception as e:

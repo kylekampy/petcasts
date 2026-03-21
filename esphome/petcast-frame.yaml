@@ -142,7 +142,15 @@ script:
     then:
       - http_request.post:
           url: http://mini:7777/api/generate
-      - logger.log: "Generation triggered"
+          headers:
+            Content-Type: application/json
+          body: !lambda |-
+            char buf[64];
+            snprintf(buf, sizeof(buf), "{\"battery\": %.0f}", id(battery_level).state);
+            return buf;
+      - logger.log:
+          format: "Generation triggered (battery: %.0f%%)"
+          args: ["id(battery_level).state"]
   - id: go_to_sleep
     mode: single
     then:

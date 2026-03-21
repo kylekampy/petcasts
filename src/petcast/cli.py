@@ -15,6 +15,7 @@ def main() -> None:
     # generate
     gen = sub.add_parser("generate", help="Run the full generation pipeline")
     gen.add_argument("--debug", action="store_true", help="Save intermediate images to debug dir")
+    gen.add_argument("--battery", type=float, default=None, help="Battery percentage (0-100)")
     gen.add_argument("--root", type=Path, default=Path("."), help="Project root directory")
 
     # weather (standalone test)
@@ -35,7 +36,7 @@ def main() -> None:
 
     if args.command == "generate":
         from petcast.pipeline import run
-        run(args.root.resolve(), debug=args.debug)
+        run(args.root.resolve(), debug=args.debug, battery_pct=args.battery)
 
     elif args.command == "weather":
         from petcast.config import load_config

@@ -33,8 +33,8 @@ Do not depict lush green landscapes when the season doesn't support it.
 
 The final image will include a small weather forecast panel rendered in the chosen art style. \
 You must decide where this panel goes based on the scene composition — pick the corner with \
-the least visual interest. The image will be cropped slightly on the top and bottom, so \
-keep all important elements (pets, panel) in the central 80% vertically.
+the least visual interest. The image will be cropped to a wider aspect ratio — the top and bottom ~7% will be cut off. \
+Keep all important elements (pets, panel) well within the central 70% vertically.
 
 Respond with ONLY a JSON object (no markdown fencing) with these keys:
 - activity: what the pets are doing together (1 sentence, must include ALL pets)
@@ -51,6 +51,7 @@ def generate_scene(
     selection: Selection,
     forecast: Forecast,
     history: list[dict],
+    battery_pct: float | None = None,
 ) -> SceneDescription:
     """Use OpenAI chat to generate a structured scene description."""
     pet_descriptions = "\n".join(
@@ -95,6 +96,15 @@ Recent scenes to AVOID repeating:
 
 Design a scene featuring ALL pets ({all_pet_names}) for today's forecast image. \
 The environment must reflect the actual season and weather at this location.
+"""
+
+    if battery_pct is not None and battery_pct < 15:
+        user_prompt += f"""
+IMPORTANT: The display frame's battery is critically low at {battery_pct:.0f}%! \
+The pets should look worried, anxious, or concerned about running out of energy. \
+Maybe they're huddled around a dying campfire, or looking at a dimming lantern, \
+or one of them is holding a nearly-empty battery. Make the low energy theme \
+a charming but noticeable part of the scene.
 """
 
     client = OpenAI()

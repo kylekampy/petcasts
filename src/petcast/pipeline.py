@@ -16,7 +16,7 @@ from petcast.generate import generate_image
 from petcast.dither import dither_for_display
 
 
-def run(root: Path, debug: bool = False) -> Path:
+def run(root: Path, debug: bool = False, battery_pct: float | None = None) -> Path:
     """Run the full pipeline and return the path to latest.png."""
     config = load_config(root)
 
@@ -39,13 +39,13 @@ def run(root: Path, debug: bool = False) -> Path:
     # Step 3: Generate scene description
     print("Generating scene description...")
     history = load_history(root)
-    scene = generate_scene(config, selection, forecast, history)
+    scene = generate_scene(config, selection, forecast, history, battery_pct=battery_pct)
     print(f"  Activity: {scene.activity}")
     print(f"  Overlay: {scene.overlay_position}")
 
     # Step 4: Generate image
     print("Generating image...")
-    raw_image = generate_image(config, selection, scene, forecast, root)
+    raw_image = generate_image(config, selection, scene, forecast, root, battery_pct=battery_pct)
     if debug:
         _save_debug(raw_image, config.output.debug_dir, "01_raw_generated")
 
@@ -80,6 +80,7 @@ def run(root: Path, debug: bool = False) -> Path:
         "pets": [p.name for p in selection.pets],
         "photo": selection.photo,
         "style": selection.style,
+        "battery_pct": battery_pct,
         "weather": dict(forecast),
         "scene": {
             "activity": scene.activity,

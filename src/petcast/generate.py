@@ -21,9 +21,10 @@ def generate_image(
     scene: SceneDescription,
     forecast: Forecast,
     root: Path,
+    battery_pct: float | None = None,
 ) -> Image.Image:
     """Generate an image using OpenAI's image API with pet reference photos."""
-    prompt = _build_prompt(selection, scene, forecast)
+    prompt = _build_prompt(selection, scene, forecast, battery_pct=battery_pct)
 
     photo_path = root / "pets" / "input" / selection.photo
     client = OpenAI()
@@ -49,7 +50,8 @@ def generate_image(
 
 
 def _build_prompt(
-    selection: Selection, scene: SceneDescription, forecast: Forecast
+    selection: Selection, scene: SceneDescription, forecast: Forecast,
+    battery_pct: float | None = None,
 ) -> str:
     pet_names = ", ".join(p.name for p in selection.pets)
     pet_descs = "; ".join(
@@ -81,15 +83,18 @@ WEATHER FORECAST PANEL: Include a small forecast panel in the {scene.overlay_pos
 rendered in the same {selection.style} art style as the rest of the image. The panel should show:
 - A stylized weather icon (sun, clouds, rain, snow, etc.) for "{weather_summary}"
 - The text "{day_name}, {month_name} {day_num}" (spell it exactly: {day_spelled})
-- The text "{temp_str}"
+- The text "{temp_str}"\
+{f"""
+- A small battery icon showing approximately {battery_pct:.0f}% charge""" if battery_pct is not None else ""}
 The panel should feel integrated into the artwork. Keep the text large enough to read clearly. \
 Double-check spelling of all words. \
-IMPORTANT: Inset the panel at least 10% from ALL edges — the image will be cropped slightly \
-on the top and bottom, so nothing important should be within 10% of any edge.
+IMPORTANT: The image will be cropped to a wider aspect ratio — the top and bottom ~7% will be cut off. \
+Inset the panel at least 15% from the top and bottom edges, and 5% from the left and right edges. \
+Nothing important should be near the top or bottom edge.
 
 IMPORTANT: ALL pets ({pet_names}) must appear — each with exactly ONE head. \
 They should be the clear focal point. Make them recognizable and true to the reference photo. \
 The weather and season must be reflected in the environment. \
-Keep all important content (pets, panel) away from the top and bottom 10% of the image. \
+Keep all important content (pets, panel) well away from the top and bottom edges. \
 Do NOT include any other text besides what's in the forecast panel.
 """
