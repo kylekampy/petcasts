@@ -46,8 +46,15 @@ uv run python -m petcast serve
 ## Docker
 
 ```bash
-# Build and run
-docker compose up -d
+# Run from GitHub Container Registry
+docker run -d \
+  --name petcast \
+  -p 7777:7777 \
+  -e OPENAI_API_KEY=sk-... \
+  -v /opt/volumes/petcast/state:/app/pets/state \
+  -v /opt/volumes/petcast/output:/app/output \
+  --restart unless-stopped \
+  ghcr.io/kylekampy/petcasts:latest
 
 # Trigger a generation
 curl -X POST http://localhost:7777/api/generate
@@ -57,13 +64,40 @@ curl http://localhost:7777/api/status
 
 # Fetch the image
 curl http://localhost:7777/output/latest.png -o forecast.png
+
+# Browse past images
+curl http://localhost:7777/api/archive
 ```
 
-The container is also published to GitHub Container Registry:
+## Display
 
-```bash
-docker pull ghcr.io/kylekampy/petcasts:latest
-```
+Designed for the [Seeed reTerminal E1002](https://www.seeedstudio.com/reTerminal-E10-2-p-6366.html) (800x480, Spectra 6 color e-ink) running [ESPHome](https://esphome.io/).
+
+### Daily schedule
+
+| Time | Action |
+|------|--------|
+| 4:55 AM | Wake from deep sleep, POST `/api/generate` to trigger image generation |
+| 5:00 AM | GET `/output/latest.png`, update the e-ink display |
+| 5:02 AM | Deep sleep until tomorrow |
+
+### Green button
+
+Press anytime to regenerate — triggers a new image, waits 90 seconds, then refreshes the display. Useful if you don't like today's image.
+
+### ESPHome setup
+
+1. Copy `esphome/petcast-frame.yaml` to your ESPHome config directory
+2. Create `esphome/secrets.yaml` with your WiFi credentials:
+   ```yaml
+   wifi_ssid: "your-wifi-ssid"
+   wifi_password: "your-wifi-password"
+   ota_password: "your-ota-password"
+   ap_password: "your-fallback-ap-password"
+   ```
+3. Update the server URL in `petcast-frame.yaml` (default: `http://mini:7777`)
+4. Update the timezone (default: `America/Chicago`)
+5. Flash to your ESP32-S3
 
 ## Fork and make it your own
 
@@ -110,19 +144,16 @@ styles:
   # ... add styles that work well with e-ink dithering
 ```
 
-## Display
-
-Designed for the Waveshare e1002 (800x480, Spectra 6 color e-ink). The display wakes up, POSTs to `/api/generate`, waits a few minutes, then GETs `/output/latest.png` and goes back to sleep.
-
-ESPHome config coming soon.
-
 ## API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/generate` | POST | Trigger image generation (returns 202, runs async) |
-| `/api/status` | GET | Returns `latest.json` metadata + `generating` flag |
+| `/api/status` | GET | Latest metadata + `generating` flag |
+| `/api/archive` | GET | List all archived images with metadata |
 | `/output/latest.png` | GET | The latest generated image |
+| `/output/latest.json` | GET | The latest metadata |
+| `/output/archive/...` | GET | Archived images by date |
 
 ## Cost
 

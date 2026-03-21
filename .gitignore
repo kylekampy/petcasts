@@ -9,3 +9,4 @@ output/latest.png
 output/latest.json
 .env
 .DS_Store
+esphome/secrets.yaml
