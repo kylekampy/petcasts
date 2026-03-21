@@ -1,7 +1,11 @@
 # Petcast ESPHome config for Seeed reTerminal E1002
-# Green button: wakes from deep sleep, triggers regeneration, displays, sleeps.
-# Right white button: manual sleep.
-# On boot: fetch latest image, display it, go to sleep.
+#
+# Behavior:
+#   - Deep sleeps until 4:58 AM daily
+#   - Wakes, triggers generation on server, waits, fetches image, displays, sleeps
+#   - Green button: wake from sleep, regenerate, display, sleep
+#   - Right white button: manual sleep
+#   - Safety: auto-sleeps after 5 minutes awake no matter what
 
 esphome:
   name: petcast-frame
@@ -9,26 +13,23 @@ esphome:
   on_boot:
     priority: -100
     then:
-      - logger.log: "Boot sequence starting"
+      - logger.log: "Boot: starting"
       - light.turn_on: onboard_led
       - script.execute: update_battery_status
-      - logger.log: "Waiting for network to stabilize..."
+      # Start the safety watchdog — if we're still awake in 5 min, force sleep
+      - script.execute: sleep_watchdog
+      - logger.log: "Boot: waiting for network..."
       - delay: 5s
-      # If woken by green button, regenerate first
-      - if:
-          condition:
-            - lambda: 'return esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0;'
-          then:
-            - logger.log: "Woke from green button — regenerating"
-            - script.execute: trigger_generation
-            - logger.log: "Waiting 2min for generation..."
-            - delay: 120s
-      # Fetch and display
-      - logger.log: "Fetching latest image..."
+      # Always trigger a fresh generation and fetch it
+      - logger.log: "Boot: triggering generation"
+      - script.execute: trigger_generation
+      - logger.log: "Boot: waiting for generation (90s)..."
+      - delay: 90s
+      - logger.log: "Boot: fetching image"
       - component.update: petcast_image
-      - logger.log: "Waiting for display to finish..."
+      - logger.log: "Boot: waiting for display refresh..."
       - delay: 30s
-      # Done — go to sleep
+      - logger.log: "Boot: done, sleeping"
       - script.execute: go_to_sleep
 
 esp32:
@@ -67,25 +68,6 @@ time:
     servers:
       - 0.pool.ntp.org
       - 1.pool.ntp.org
-    on_time:
-      # 4:58 AM — trigger image generation
-      - seconds: 0
-        minutes: 58
-        hours: 4
-        then:
-          - script.execute: trigger_generation
-      # 5:00 AM — fetch and display
-      - seconds: 0
-        minutes: 0
-        hours: 5
-        then:
-          - component.update: petcast_image
-      # 5:02 AM — deep sleep until tomorrow
-      - seconds: 0
-        minutes: 2
-        hours: 5
-        then:
-          - script.execute: go_to_sleep
 
 spi:
   clk_pin: GPIO7
@@ -111,6 +93,7 @@ online_image:
     buffer_size: 65536
     url: http://mini:7777/output/latest.png
     on_download_finished:
+      - logger.log: "Image downloaded, updating display"
       - component.update: epaper_display
 
 # Green button wakes from deep sleep
@@ -142,7 +125,7 @@ script:
     then:
       - http_request.post:
           url: http://mini:7777/api/generate
-          headers:
+          request_headers:
             Content-Type: application/json
           body: !lambda |-
             char buf[64];
@@ -151,16 +134,27 @@ script:
       - logger.log:
           format: "Generation triggered (battery: %.0f%%)"
           args: ["id(battery_level).state"]
+
   - id: go_to_sleep
     mode: single
     then:
-      - logger.log: "Going to deep sleep until 4:58 AM"
+      - logger.log: "Entering deep sleep until 4:58 AM"
       - light.turn_off: onboard_led
       - delay: 1s
       - deep_sleep.enter:
           id: deep_sleep_ctrl
           time_id: sntp_time
           until: "04:58:00"
+
+  - id: sleep_watchdog
+    mode: single
+    then:
+      # Safety net: if still awake after 5 minutes, force sleep
+      # This catches OTA reboots, power cycles, failed boots, etc.
+      - delay: 300s
+      - logger.log: "Watchdog: still awake after 5 min, forcing sleep"
+      - script.execute: go_to_sleep
+
   - id: update_battery_status
     mode: single
     then:
@@ -169,6 +163,9 @@ script:
       - component.update: battery_voltage
       - component.update: battery_level
       - output.turn_off: bsp_battery_enable
+      - logger.log:
+          format: "Battery: %.0f%%"
+          args: ["id(battery_level).state"]
 
 output:
   - platform: gpio
