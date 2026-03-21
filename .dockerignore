@@ -1,0 +1,11 @@
+.venv/
+.git/
+.github/
+.env
+.DS_Store
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+output/
+pets/state/history.json

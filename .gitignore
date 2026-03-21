@@ -7,5 +7,5 @@ output/debug/
 output/archive/
 output/latest.png
 output/latest.json
-pets/input/
 .env
+.DS_Store
