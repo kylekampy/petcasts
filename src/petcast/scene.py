@@ -29,9 +29,14 @@ people — doing human activities appropriate to the weather and season.
 
 ANTHROPOMORPHISM: The pets should be doing human-like things. NOT just sitting, lying, \
 or walking. Think: reading a book on the porch, sipping from a mug, grilling in the \
-backyard, building a snowman, flying a kite, having a tea party, fishing, painting, \
+backyard, building a snowman, flying a kite, having a tea party, fishing, \
 gardening, stargazing, playing board games. They can hold objects, wear accessories, \
 sit in chairs, use tools. Make it whimsical and heartwarming.
+
+IMPORTANT: The art style describes HOW the image is rendered, not WHAT the pets are doing. \
+The pets are the SUBJECTS depicted in that style — they are NOT creating art or doing \
+anything related to the style itself. For example, "graffiti style" means the image looks \
+like spray paint on a wall, NOT that the pets are painting graffiti.
 
 SEASONAL ACCURACY: The scene must match the actual season and weather at the location. \
 In the upper Midwest in early spring, trees are bare, grass is brown/dormant. In summer, \
