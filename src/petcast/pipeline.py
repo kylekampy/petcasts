@@ -23,7 +23,7 @@ def _step(name: str) -> float:
     return time.time()
 
 
-def run(root: Path, debug: bool = False, battery_pct: float | None = None) -> Path:
+def run(root: Path, debug: bool = False, battery_pct: float | None = None, force_style: str | None = None) -> Path:
     """Run the full pipeline and return the path to latest.png."""
     pipeline_start = time.time()
     config = load_config(root)
@@ -34,6 +34,12 @@ def run(root: Path, debug: bool = False, battery_pct: float | None = None) -> Pa
     # Step 1: Select
     t = _step("Selecting pets and style...")
     selection = select(config, root)
+    if force_style:
+        # Find the style that matches the substring
+        for s in config.styles:
+            if force_style.lower() in s.lower():
+                selection = type(selection)(pets=selection.pets, photo=selection.photo, style=s)
+                break
     print(f"  Pets: {', '.join(p.name for p in selection.pets)}")
     print(f"  Photo: {selection.photo}")
     print(f"  Style: {selection.style}")
