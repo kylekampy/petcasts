@@ -6,23 +6,27 @@ location:
   longitude: -91.1161
 
 styles:
-  # Bold lines, flat colors, high contrast — styles that survive
-  # 6-color dithering on an 800x480 e-ink display
-  - 'comic book pop art with bold outlines and flat colors'
-  - 'Japanese woodblock print with strong black outlines'
-  - 'retro pixel art with chunky pixels and limited palette'
-  - 'paper cut-out collage with bold shapes and solid colors'
-  - 'linocut print with high contrast black and white plus spot color'
-  - 'vintage travel poster with flat graphic shapes'
+  # Bold, graphic styles that survive 6-color dithering on e-ink
+  - 'cubism with geometric shapes, bold black outlines, and flat color blocks'
+  - 'flat vector illustration with thick outlines, solid colors, and simplified shapes'
+  - 'abstract organic with loose brushstrokes, bold splashes of color, and thick black outlines'
+  - 'vintage travel poster with flat graphic shapes and warm muted palette'
+  - 'art brut with raw bold lines, high contrast, and limited flat colors'
+  - 'mixed media collage with layered paper textures, bold color blocks, and rough edges'
+  - 'pop art with bold outlines, halftone dots, and vivid flat colors'
+  - 'art deco with geometric symmetry, strong lines, and warm color gradients'
+  - 'art poster with minimal flat shapes, muted palette, and clean composition'
+  - 'graffiti street art with stencil shapes, spray paint texture, and high contrast'
+  - 'jazzy with bold graphic shapes, bright primary colors, and playful composition'
+  - 'old cartoons with cel-shaded flat colors, thick outlines, and retro character style'
+  - 'Japanese woodblock print with strong black outlines and flat color areas'
   - "children's book illustration with thick outlines and bright flat colors"
-  - 'stained glass window style with black leading and vivid color blocks'
   - 'folk art painting with simple shapes and bold patterns'
-  - 'screen print with limited flat color layers'
+  - 'linocut print with high contrast black and white plus spot color'
 
-openai:
-  model: 'gpt-image-1.5'
-  chat_model: 'gpt-4o-mini'
-  size: '1536x1024'
+gemini:
+  image_model: 'gemini-3.1-flash-image-preview'
+  chat_model: 'gemini-2.5-flash'
 
 display:
   width: 800

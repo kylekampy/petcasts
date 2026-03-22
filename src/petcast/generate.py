@@ -1,12 +1,11 @@
-"""OpenAI image generation."""
+"""Gemini image generation with pet reference photos."""
 
-import base64
-import io
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from openai import OpenAI
+from google import genai
+from google.genai import types
 from PIL import Image
 
 from petcast.config import Config
@@ -23,30 +22,34 @@ def generate_image(
     root: Path,
     battery_pct: float | None = None,
 ) -> Image.Image:
-    """Generate an image using OpenAI's image API with pet reference photos."""
+    """Generate an image using Gemini with pet reference photos."""
     prompt = _build_prompt(selection, scene, forecast, battery_pct=battery_pct)
 
+    # Build contents: prompt text + reference photo
+    contents: list = [prompt]
     photo_path = root / "pets" / "input" / selection.photo
-    client = OpenAI()
-
     if photo_path.exists():
-        with open(photo_path, "rb") as f:
-            result = client.images.edit(
-                model=config.openai.model,
-                image=[f],
-                prompt=prompt,
-                size=config.openai.size,
-                input_fidelity="high",
-            )
-    else:
-        result = client.images.generate(
-            model=config.openai.model,
-            prompt=prompt,
-            size=config.openai.size,
-        )
+        contents.append(Image.open(photo_path))
 
-    image_data = base64.standard_b64decode(result.data[0].b64_json)
-    return Image.open(io.BytesIO(image_data))
+    client = genai.Client()
+    response = client.models.generate_content(
+        model=config.gemini.image_model,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            response_modalities=["TEXT", "IMAGE"],
+            image_config=types.ImageConfig(
+                aspect_ratio="3:2",
+            ),
+        ),
+    )
+
+    # Extract image from response — convert to PIL Image
+    for part in response.parts:
+        if part.inline_data is not None:
+            import io
+            return Image.open(io.BytesIO(part.inline_data.data))
+
+    raise RuntimeError("No image was generated in the response")
 
 
 def _build_prompt(
@@ -55,16 +58,13 @@ def _build_prompt(
 ) -> str:
     today = datetime.now(ZoneInfo(forecast["timezone"]))
     day_name = today.strftime("%A")
-    day_spelled = " ".join(day_name.upper())
     month_name = today.strftime("%B")
     day_num = str(today.day)
     temp_str = f"{forecast['high_f']:.0f}°/{forecast['low_f']:.0f}°"
-    weather_summary = forecast["weather_desc"]
 
     num_pets = len(selection.pets)
     pet_count_word = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}.get(num_pets, str(num_pets))
 
-    # Build individual pet descriptions with emphasis on uniqueness
     pet_list = "\n".join(
         f"  {i+1}. {p.name}: {p.description}" for i, p in enumerate(selection.pets)
     )
@@ -93,20 +93,19 @@ BACKGROUND: {scene.background}
 MOOD: {scene.mood}
 COMPOSITION: {scene.constraints}
 
-WEATHER PANEL in the {scene.overlay_position} corner, rendered in the {selection.style} style:
-- Weather icon: draw EXACTLY {forecast['weather_icon_desc']}. \
-Do NOT add rain, raindrops, or precipitation to the icon unless the description says to.
-- "{day_name}, {month_name} {day_num}" (spell exactly: {day_spelled})
-- "{temp_str}"\
-{f"""
-- LOW BATTERY icon: {battery_pct:.0f}%""" if battery_pct is not None and battery_pct < 15 else ""}
-PANEL POSITION: Place the panel's CENTER at roughly 20% from the edge of the image. \
-The panel must be fully visible with comfortable margin from all edges — especially top \
-and bottom since those will be cropped ~7%.
+WEATHER INFO: Somewhere in the image, creatively incorporate today's forecast, weekday and date: \
+{forecast['weather_icon_desc']}, {day_name} {month_name} {day_num}, {temp_str}. \
+Integrate it naturally into the scene in whatever way fits the art style — \
+it could be a sign, a chalkboard, written in the sky, on a newspaper, etc. Be creative.\
+{f" Also show a low battery warning ({battery_pct:.0f}%)." if battery_pct is not None and battery_pct < 15 else ""}
 
 RULES:
 - Exactly {num_pets} pets, each with ONE head. No duplicates.
-- No text except the weather panel.
+- No text except the weather info.
 - Season and weather reflected in the environment.
-- Keep all content away from top/bottom edges (will be cropped ~7%).
+- Do NOT add any border, frame, or white edge around the image.
+- IMPORTANT: This image will be generated at 3:2 aspect ratio but CROPPED to 5:3 (800x480). \
+That means ~10% of the top and bottom will be cut off. Keep ALL important content \
+(pets, weather info, focal points) within the center 80% of the image vertically. \
+Extend backgrounds to the full edges but don't put anything important near the top or bottom.
 """

@@ -14,10 +14,9 @@ class LocationConfig:
 
 
 @dataclass
-class OpenAIConfig:
-    model: str
+class GeminiConfig:
+    image_model: str
     chat_model: str
-    size: str
 
 
 @dataclass
@@ -58,7 +57,7 @@ class PetGroup:
 class Config:
     location: LocationConfig
     styles: list[str]
-    openai: OpenAIConfig
+    gemini: GeminiConfig
     display: DisplayConfig
     output: OutputConfig
     cooldowns: CooldownConfig
@@ -75,7 +74,7 @@ def load_config(root: Path) -> Config:
         pets_raw = yaml.safe_load(f)
 
     loc = raw["location"]
-    ai = raw["openai"]
+    ai = raw["gemini"]
     disp = raw["display"]
     out = raw["output"]
     cd = raw["cooldowns"]
@@ -87,10 +86,9 @@ def load_config(root: Path) -> Config:
             longitude=loc["longitude"],
         ),
         styles=raw["styles"],
-        openai=OpenAIConfig(
-            model=ai["model"],
+        gemini=GeminiConfig(
+            image_model=ai["image_model"],
             chat_model=ai["chat_model"],
-            size=ai["size"],
         ),
         display=DisplayConfig(width=disp["width"], height=disp["height"]),
         output=OutputConfig(

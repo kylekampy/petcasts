@@ -95,7 +95,7 @@ def run(root: Path, debug: bool = False, battery_pct: float | None = None) -> Pa
             "foreground": scene.foreground,
             "background": scene.background,
             "mood": scene.mood,
-            "overlay_position": scene.overlay_position,
+            "weather_integration": scene.weather_integration,
         },
     }
 

@@ -1,11 +1,11 @@
-"""Structured scene prompt generation via OpenAI chat."""
+"""Structured scene prompt generation via Gemini."""
 
 import json
 from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from openai import OpenAI
+from google import genai
 
 from petcast.config import Config
 from petcast.select import Selection
@@ -19,7 +19,7 @@ class SceneDescription:
     background: str
     mood: str
     constraints: str
-    overlay_position: str  # "top-left", "top-right", "bottom-left", "bottom-right"
+    weather_integration: str
 
 
 SYSTEM_PROMPT = """\
@@ -45,22 +45,22 @@ bold carved lines, ink texture, woodgrain showing through. For "stained glass" d
 thick black leading, jewel-toned glass segments, light shining through.
 
 COMPOSITION: The image will be cropped to a wider aspect ratio — top and bottom ~7% \
-will be cut off. Keep all important elements in the central 70% vertically. A small \
-weather forecast panel will be rendered in one corner — pick the corner with the least \
-visual interest.
+will be cut off. Keep all important elements in the central 70% vertically. \
+The weather info will be creatively integrated into the scene (not necessarily a panel).
 
 CRITICAL RULES:
 - Each pet appears EXACTLY ONCE. Never duplicate a pet.
 - Each pet has exactly ONE head.
 - Name every pet by name in the activity description.
+- No border or frame around the image.
 
 Respond with ONLY a JSON object (no markdown fencing) with these keys:
 - activity: what the pets are doing (1 sentence, must name ALL pets, must be anthropomorphic)
 - foreground: detailed foreground description leaning heavily into the art style's visual language
 - background: detailed background (seasonally accurate, described in the art style's visual language)
 - mood: lighting and color mood specific to the art style
-- constraints: composition notes (e.g. "leave clear space in bottom-right for weather panel")
-- overlay_position: "top-left", "top-right", "bottom-left", or "bottom-right"
+- constraints: composition notes
+- weather_integration: creative idea for how to show the weather info in the scene (e.g. "on a chalkboard sign", "written in clouds", "on a newspaper the cat is reading")
 """
 
 
@@ -71,7 +71,7 @@ def generate_scene(
     history: list[dict],
     battery_pct: float | None = None,
 ) -> SceneDescription:
-    """Use OpenAI chat to generate a structured scene description."""
+    """Use Gemini to generate a structured scene description."""
     pet_descriptions = "\n".join(
         f"- {pet.name}: {pet.description}" for pet in selection.pets
     )
@@ -127,17 +127,13 @@ or one of them is holding a nearly-empty battery. Make the low energy theme \
 a charming but noticeable part of the scene.
 """
 
-    client = OpenAI()
-    resp = client.chat.completions.create(
-        model=config.openai.chat_model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=1.0,
+    client = genai.Client()
+    resp = client.models.generate_content(
+        model=config.gemini.chat_model,
+        contents=f"{SYSTEM_PROMPT}\n\n{user_prompt}",
     )
 
-    raw = resp.choices[0].message.content.strip()
+    raw = resp.text.strip()
     # Strip markdown fencing if present
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1]
@@ -153,5 +149,5 @@ a charming but noticeable part of the scene.
         background=data["background"],
         mood=data["mood"],
         constraints=data["constraints"],
-        overlay_position=data.get("overlay_position", "bottom-right"),
+        weather_integration=data.get("weather_integration", "on a small sign in the corner"),
     )

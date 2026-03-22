@@ -13,8 +13,8 @@ Petcast picks your pets, checks the weather, generates a styled scene with an in
 
 1. **Pick a photo** — randomly selects a reference photo from your collection. The pets in that photo become the cast for the day.
 2. **Fetch weather** — pulls today's forecast from [Open-Meteo](https://open-meteo.com/) (free, no API key needed).
-3. **Generate a scene** — GPT-4o-mini designs an anthropomorphic scene where the pets do human-like activities (sipping coffee, flying kites, reading books) appropriate to the weather and season, described in the visual language of a randomly chosen art style.
-4. **Generate the image** — gpt-image-1.5 renders the scene with a baked-in forecast panel (weather icon, date, temperature), using the reference photo for pet likeness.
+3. **Generate a scene** — Gemini 2.5 Flash designs an anthropomorphic scene where the pets do human-like activities (sipping coffee, flying kites, reading books) appropriate to the weather and season, described in the visual language of a randomly chosen art style.
+4. **Generate the image** — Gemini 3.1 Flash renders the scene with creatively integrated weather info, using reference photos for pet likeness.
 5. **Dither** — Atkinson dithers the image to the Spectra 6 e-ink palette (black, white, red, green, blue, yellow) at 800x480.
 6. **Serve** — an HTTP server lets your display fetch the image whenever it's ready.
 
@@ -25,8 +25,8 @@ Petcast picks your pets, checks the weather, generates a styled scene with an in
 git clone https://github.com/kylekampy/petcasts.git
 cd petcasts
 
-# Add your OpenAI API key
-echo "OPENAI_API_KEY=sk-..." > .env
+# Add your Google API key
+echo "GOOGLE_API_KEY=..." > .env
 
 # Install deps
 uv sync
@@ -51,7 +51,7 @@ uv run python -m petcast serve
 docker run -d \
   --name petcast \
   -p 7777:7777 \
-  -e OPENAI_API_KEY=sk-... \
+  -e GOOGLE_API_KEY=sk-... \
   -v /opt/volumes/petcast/state:/app/pets/state \
   -v /opt/volumes/petcast/output:/app/output \
   --restart unless-stopped \
@@ -123,7 +123,7 @@ uv run python -m petcast generate --debug --battery 8
 2. **Replace the pet photos** in `pets/input/` with your own
 3. **Edit `pets/meta/pets.yaml`** — name each pet, describe their appearance and personality, and list which photos they appear in
 4. **Edit `config.yaml`** — set your location (lat/lon), tweak styles, adjust cooldowns
-5. **Add your `OPENAI_API_KEY`** as a repo secret (for the GitHub Action) and in `.env` (for local dev)
+5. **Add your `GOOGLE_API_KEY`** as a repo secret (for the GitHub Action) and in `.env` (for local dev)
 6. **Push** — the GitHub Action builds and publishes your container to your own ghcr.io registry
 
 ### pets.yaml format
@@ -175,4 +175,4 @@ styles:
 
 ## Cost
 
-~$0.04 per generation (gpt-image-1.5 for the image + gpt-4o-mini for the scene). At one image per day, that's about **$1.20/month**.
+~$0.05 per generation (Gemini 3.1 Flash for the image + Gemini 2.5 Flash for the scene). At one image per day, that's about **$1.50/month**.
