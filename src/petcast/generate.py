@@ -70,11 +70,14 @@ def _build_prompt(
     )
 
     return f"""\
-Create a wide landscape illustration in the style of {selection.style}.
+ART STYLE — THIS IS THE MOST IMPORTANT INSTRUCTION:
+{selection.style}
 
-The image should look authentically like {selection.style} — use the specific visual \
-techniques, textures, line qualities, and color treatments of that medium. Do not just \
-apply a filter; make it look like it was genuinely created in this style.
+The image MUST look like it was physically created using the medium described above. \
+Not a digital illustration with a style filter — it should look like the REAL THING. \
+If it says "linocut print", the image should look like ink pressed from a carved block. \
+If it says "graffiti on a wall", the image should look like spray paint on concrete. \
+The medium IS the image. Every pixel should reinforce the chosen art style.
 
 SCENE: {scene.activity}
 

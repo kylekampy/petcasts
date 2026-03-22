@@ -6,23 +6,102 @@ location:
   longitude: -91.1161
 
 styles:
-  # Bold, graphic styles that survive 6-color dithering on e-ink
-  - 'cubism with geometric shapes, bold black outlines, and flat color blocks'
-  - 'flat vector illustration with thick outlines, solid colors, and simplified shapes'
-  - 'abstract organic with loose brushstrokes, bold splashes of color, and thick black outlines'
-  - 'vintage travel poster with flat graphic shapes and warm muted palette'
-  - 'art brut with raw bold lines, high contrast, and limited flat colors'
-  - 'mixed media collage with layered paper textures, bold color blocks, and rough edges'
-  - 'pop art with bold outlines, halftone dots, and vivid flat colors'
-  - 'art deco with geometric symmetry, strong lines, and warm color gradients'
-  - 'art poster with minimal flat shapes, muted palette, and clean composition'
-  - 'graffiti street art with stencil shapes, spray paint texture, and high contrast'
-  - 'jazzy with bold graphic shapes, bright primary colors, and playful composition'
-  - 'old cartoons with cel-shaded flat colors, thick outlines, and retro character style'
-  - 'Japanese woodblock print with strong black outlines and flat color areas'
-  - "children's book illustration with thick outlines and bright flat colors"
-  - 'folk art painting with simple shapes and bold patterns'
-  - 'linocut print with high contrast black and white plus spot color'
+  - >-
+    Cubist painting in the style of Picasso or Braque. Subjects broken into geometric
+    facets and reassembled from multiple viewpoints simultaneously. Flat planes of muted
+    color (ochre, slate blue, terracotta, olive) with bold black outlines separating each
+    facet. The surface should look like oil paint on canvas with visible brushwork texture.
+    NOT a cartoon — this should look like a real cubist painting hanging in a museum.
+  - >-
+    Flat vector illustration like a modern editorial magazine graphic. Thick uniform black
+    outlines, perfectly solid fills with no gradients, simplified geometric body shapes.
+    Limited palette of 4-5 bold colors. Clean negative space. Characters are stylized with
+    minimal detail — dot eyes, simple curves. Like an illustration from Monocle magazine
+    or an airline safety card.
+  - >-
+    Abstract organic style like Matisse cut-outs. Loose, energetic brushstrokes in primary
+    colors (red, blue, yellow, green, black) on a white or cream background. Thick black
+    outlines that look hand-drawn with a marker. Shapes are free-form and imprecise —
+    leaves, flowers, and figures are suggested rather than detailed. Joyful, spontaneous,
+    and childlike but sophisticated.
+  - >-
+    1930s-1950s vintage travel poster. Flat areas of color with no gradients, strong
+    geometric composition, dramatic perspective. Warm palette of dusty blues, sunset
+    oranges, cream, and forest green. Bold sans-serif typography integrated into the
+    design. The image should look like a lithograph print — slightly grainy texture,
+    visible ink layers, muted rather than bright colors.
+  - >-
+    Art brut / outsider art. Raw, untrained, deliberately crude drawing style with thick
+    uneven black outlines. Figures are distorted and childlike but expressive. Limited
+    palette of 2-3 bold flat colors (red, blue, yellow) against white or a single
+    background color. Looks like it was drawn with house paint on cardboard. No polish,
+    no refinement — pure expression.
+  - >-
+    Mixed media collage. Layered torn paper, newspaper clippings, and painted surfaces
+    overlapping. Visible tape, rough torn edges, mismatched textures. Some areas are
+    photographic (halftone dots), others are flat painted color. Bold color blocks of
+    orange, blue, black, and white. The surface should look tactile — like you could
+    feel the layers of paper. Think Robert Rauschenberg or Kurt Schwitters.
+  - >-
+    Pop art in the style of Roy Lichtenstein or Andy Warhol. Ben-Day halftone dots visible
+    in skin tones and backgrounds. Heavy black outlines. Flat areas of vivid primary colors
+    (red, yellow, blue) and pink. High contrast, punchy, commercial look. The image should
+    look like it was screen-printed — slightly misregistered ink layers, bold graphic impact.
+    NOT subtle — everything is cranked to maximum saturation.
+  - >-
+    Art deco poster style from the 1920s-1930s. Strong geometric symmetry, radiating
+    sunburst patterns, stepped/ziggurat forms. Metallic gold and bronze tones with deep
+    navy, black, and cream. Elegant linear details and decorative borders integrated into
+    the composition. Streamlined, luxurious, architectural. Looks like a poster for the
+    Orient Express or a Jazz Age nightclub.
+  - >-
+    Minimalist art poster with extremely reduced forms. Subjects depicted as simple flat
+    geometric shapes — circles, rectangles, triangles. Very limited muted palette (2-3
+    colors plus black and white). Large areas of negative space. No outlines — shapes
+    defined by color alone. Clean, quiet, contemplative. Like a Scandinavian design poster
+    or a Japanese minimalist print.
+  - >-
+    Graffiti street art on a concrete or brick wall. Stencil-cut shapes with sharp edges
+    and spray paint overspray halos. The wall texture is visible through the paint. Limited
+    to 3-4 colors of spray paint (black, white, red, blue). Some drips and runs. Political
+    poster aesthetic — think Banksy or Shepard Fairey's OBEY. NOT a cartoon about
+    graffiti — the IMAGE ITSELF should look like it IS graffiti on a wall.
+  - >-
+    Jazzy mid-century modern illustration. Bold graphic shapes in bright primary colors
+    (red, blue, yellow, green, black, white). Playful, rhythmic composition with shapes
+    that overlap and interlock. Thick black outlines. Characters are simplified and
+    expressive — like a 1950s jazz album cover by Jim Flora or Alex Steinweiss. Energetic,
+    swinging, musical feeling.
+  - >-
+    1960s Hanna-Barbera cartoon style. Flat cel-shaded colors with no gradients. Thick
+    uniform black outlines. Simple but expressive character designs with exaggerated
+    features. Backgrounds are loose watercolor-style washes with minimal detail. Limited
+    retro palette — avocado green, burnt orange, mustard yellow, turquoise. Like a frame
+    from The Flintstones or Scooby-Doo.
+  - >-
+    Japanese woodblock print (ukiyo-e). Strong black outlines carved in wood with visible
+    wood grain texture in the printed areas. Flat areas of color applied in layers — each
+    color is a separate print pass. Traditional palette of indigo blue, vermillion red,
+    ochre, black, and the cream color of the paper showing through. Atmospheric
+    perspective in backgrounds. Looks like an actual print by Hokusai or Hiroshige.
+  - >-
+    Children's picture book illustration like Eric Carle or Oliver Jeffers. Thick wobbly
+    outlines in black. Bright flat colors that look like painted paper or crayon. Textures
+    visible in the color fills — tissue paper, stamped paint, crayon wax. Simple, joyful,
+    slightly messy. White or cream background showing through. Figures are round and
+    friendly with big eyes.
+  - >-
+    Eastern European folk art painting. Stylized flowers, birds, and decorative motifs
+    filling every surface. Bold symmetrical patterns. Bright primary colors on a dark or
+    white background. Subjects are flat and decorative rather than realistic — like
+    painted wooden toys or Ukrainian pysanky eggs. Every surface is patterned. Looks
+    hand-painted on wood.
+  - >-
+    Linocut block print. The entire image is carved from a linoleum block and printed
+    with ink. Strong contrast between the carved-away (white/paper) areas and the inked
+    (black) areas. One or two spot colors printed from additional blocks. Visible carving
+    marks and slightly rough edges where the block didn't print perfectly. Looks handmade
+    and imperfect. The texture of the block surface is visible.
 
 gemini:
   image_model: 'gemini-3.1-flash-image-preview'
