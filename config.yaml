@@ -104,7 +104,7 @@ styles:
     and imperfect. The texture of the block surface is visible.
 
 gemini:
-  image_model: 'gemini-3.1-flash-image-preview'
+  image_model: 'gemini-3-pro-image-preview'
   chat_model: 'gemini-2.5-flash'
 
 display:
