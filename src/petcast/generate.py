@@ -93,11 +93,14 @@ BACKGROUND: {scene.background}
 MOOD: {scene.mood}
 COMPOSITION: {scene.constraints}
 
-WEATHER INFO: Somewhere in the image, creatively incorporate today's forecast, weekday and date: \
-{forecast['weather_icon_desc']}, {day_name} {month_name} {day_num}, {temp_str}. \
-Integrate it naturally into the scene in whatever way fits the art style — \
-it could be a sign, a chalkboard, written in the sky, on a newspaper, etc. Be creative.\
-{f" Also show a low battery warning ({battery_pct:.0f}%)." if battery_pct is not None and battery_pct < 15 else ""}
+WEATHER INFO: Creatively incorporate today's forecast into the scene. Must include:
+- A weather ICON (visual, not text): {forecast['weather_icon_desc']}
+- The date: {day_name}, {month_name} {day_num}
+- Temperature: {temp_str}\
+{f"""
+- A low battery warning ({battery_pct:.0f}%)""" if battery_pct is not None and battery_pct < 15 else ""}
+Integrate these naturally in whatever way fits the art style — a sign, chalkboard, \
+newspaper, banner, window, sky writing, etc. Be creative.
 
 RULES:
 - Exactly {num_pets} pets, each with ONE head. No duplicates.
