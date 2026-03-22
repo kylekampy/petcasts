@@ -2,19 +2,19 @@
 
 AI-generated daily pet weather forecasts for e-ink displays. Heavily inspired by [forecats](https://github.com/jwardbond/forecats).
 
-Petcast picks your pets, checks the weather, generates a styled scene with an integrated forecast panel via OpenAI, dithers it for a 6-color e-ink palette, and serves it over HTTP for your display to fetch.
+Petcast picks your pets, checks the weather, generates a styled scene via Google Gemini, dithers it for a 6-color e-ink palette, and serves it over HTTP for your display to fetch.
 
-![Frame photo — Mumford and Fennec with coffee](docs/samples/frame_img_5140.png)
-![Frame photo — Zeya, Patrick, Pixel, Kona on a blanket](docs/samples/frame_img_5141.png)
-![Mumford and Fennec snuggling](docs/samples/mumford_fennec_blanket.png)
-![Pixel art cats](docs/samples/pixel_art_cats.png)
+![Graffiti street art — Zeya and Mumford](docs/samples/graffiti_street_art.png)
+![Children's book — reading together](docs/samples/childrens_book_reading.png)
+![Folk art — low battery](docs/samples/folk_art_low_battery.png)
+![Pixel art — porch snack](docs/samples/pixel_art_porch.png)
 
 ## How it works
 
 1. **Pick a photo** — randomly selects a reference photo from your collection. The pets in that photo become the cast for the day.
 2. **Fetch weather** — pulls today's forecast from [Open-Meteo](https://open-meteo.com/) (free, no API key needed).
 3. **Generate a scene** — Gemini 2.5 Flash designs an anthropomorphic scene where the pets do human-like activities (sipping coffee, flying kites, reading books) appropriate to the weather and season, described in the visual language of a randomly chosen art style.
-4. **Generate the image** — Gemini 3.1 Flash renders the scene with creatively integrated weather info, using reference photos for pet likeness.
+4. **Generate the image** — Gemini 3 Pro renders the scene with creatively integrated weather info (date, temperature, weather icon), using reference photos for pet likeness. The weather info is woven into the art style — on a sign, chalkboard, newspaper, banner, etc.
 5. **Dither** — Atkinson dithers the image to the Spectra 6 e-ink palette (black, white, red, green, blue, yellow) at 800x480.
 6. **Serve** — an HTTP server lets your display fetch the image whenever it's ready.
 
@@ -25,7 +25,7 @@ Petcast picks your pets, checks the weather, generates a styled scene with an in
 git clone https://github.com/kylekampy/petcasts.git
 cd petcasts
 
-# Add your Google API key
+# Add your Google API key (get one at https://ai.google.dev)
 echo "GOOGLE_API_KEY=..." > .env
 
 # Install deps
@@ -37,8 +37,14 @@ uv run python -m petcast weather
 # Test selection
 uv run python -m petcast select --count 10
 
-# Generate an image (with debug output)
+# Generate an image
 uv run python -m petcast generate --debug
+
+# Force a specific style
+uv run python -m petcast generate --debug --style graffiti
+
+# Test low battery behavior
+uv run python -m petcast generate --debug --battery 8
 
 # Start the HTTP server
 uv run python -m petcast serve
@@ -51,7 +57,7 @@ uv run python -m petcast serve
 docker run -d \
   --name petcast \
   -p 7777:7777 \
-  -e GOOGLE_API_KEY=sk-... \
+  -e GOOGLE_API_KEY=... \
   -v /opt/volumes/petcast/state:/app/pets/state \
   -v /opt/volumes/petcast/output:/app/output \
   --restart unless-stopped \
@@ -74,40 +80,24 @@ curl http://localhost:7777/api/archive
 
 Designed for the [Seeed reTerminal E1002](https://www.seeedstudio.com/reTerminal-E1002-p-6533.html) (800x480, Spectra 6 color e-ink) running [ESPHome](https://esphome.io/).
 
-### Daily schedule
+### How it works
 
-| Time    | Action                                                                 |
-| ------- | ---------------------------------------------------------------------- |
-| 4:58 AM | Wake from deep sleep, POST `/api/generate` to trigger image generation |
-| 5:00 AM | GET `/output/latest.png`, update the e-ink display                     |
-| 5:02 AM | Deep sleep until tomorrow                                              |
+The frame wakes from deep sleep once a day, triggers image generation on the server, fetches the result, updates the e-ink display, and goes back to sleep. The whole cycle takes about 2 minutes.
 
-### Green button
+### Buttons
 
-- **Tap** (while asleep): wake up, trigger regeneration, wait 2 minutes, fetch and display the new image.
-
-### Right white button
-
-- **Tap** (while awake): enter deep sleep until 4:58 AM.
+- **Green** (wake): wakes from deep sleep, fetches latest image
+- **Right white** (regenerate): triggers a new generation while awake
+- **Left white** (test pattern): toggles a color calibration test pattern
 
 ### Battery
 
-The frame sends its battery percentage with each generation request. It shows up as a small battery icon in the forecast panel. When battery drops below 15%, the pets in the scene will look worried about running out of energy.
-
-You can test battery behavior locally:
-
-```bash
-# Normal battery
-uv run python -m petcast generate --debug --battery 72
-
-# Low battery — pets get anxious
-uv run python -m petcast generate --debug --battery 8
-```
+The frame sends its battery percentage with each generation request. When battery drops below 15%, the pets in the scene look worried about running out of energy — huddling around dying lanterns, clutching dimming flashlights, etc.
 
 ### ESPHome setup
 
 1. Copy `esphome/petcast-frame.yaml` to your ESPHome config directory
-2. Create `esphome/secrets.yaml` with your WiFi credentials:
+2. Create `esphome/secrets.yaml`:
    ```yaml
    wifi_ssid: "your-wifi-ssid"
    wifi_password: "your-wifi-password"
@@ -122,7 +112,7 @@ uv run python -m petcast generate --debug --battery 8
 1. **Fork this repo**
 2. **Replace the pet photos** in `pets/input/` with your own
 3. **Edit `pets/meta/pets.yaml`** — name each pet, describe their appearance and personality, and list which photos they appear in
-4. **Edit `config.yaml`** — set your location (lat/lon), tweak styles, adjust cooldowns
+4. **Edit `config.yaml`** — set your location, tweak styles, adjust cooldowns
 5. **Add your `GOOGLE_API_KEY`** as a repo secret (for the GitHub Action) and in `.env` (for local dev)
 6. **Push** — the GitHub Action builds and publishes your container to your own ghcr.io registry
 
@@ -148,31 +138,17 @@ pets:
 
 Photos define natural groupings — if Luna and Max appear in `luna_and_max.png`, they'll sometimes be generated together. Solo photos mean solo scenes.
 
-### config.yaml
-
-```yaml
-location:
-  name: "Your City"
-  latitude: 40.7128
-  longitude: -74.0060
-
-styles:
-  - "comic book pop art with bold outlines and flat colors"
-  - "Japanese woodblock print with strong black outlines"
-  # ... add styles that work well with e-ink dithering
-```
-
 ## API
 
-| Endpoint              | Method | Description                                                                               |
-| --------------------- | ------ | ----------------------------------------------------------------------------------------- |
-| `/api/generate`       | POST   | Trigger image generation (returns 202, runs async). Optional JSON body: `{"battery": 85}` |
-| `/api/status`         | GET    | Latest metadata + `generating` flag                                                       |
-| `/api/archive`        | GET    | List all archived images with metadata                                                    |
-| `/output/latest.png`  | GET    | The latest generated image                                                                |
-| `/output/latest.json` | GET    | The latest metadata                                                                       |
-| `/output/archive/...` | GET    | Archived images by date                                                                   |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/generate` | POST | Trigger image generation (returns 202, runs async). Optional body: `{"battery": 85}` |
+| `/api/status` | GET | Latest metadata + `generating` flag |
+| `/api/archive` | GET | List all archived images with metadata |
+| `/output/latest.png` | GET | The latest generated image |
+| `/output/latest.json` | GET | The latest metadata |
+| `/output/archive/...` | GET | Archived images by date |
 
 ## Cost
 
-~$0.05 per generation (Gemini 3.1 Flash for the image + Gemini 2.5 Flash for the scene). At one image per day, that's about **$1.50/month**.
+~$0.14 per generation (Gemini 3 Pro for the image + Gemini 2.5 Flash for the scene). At one image per day, that's about **$4/month**.
