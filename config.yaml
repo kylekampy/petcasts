@@ -102,6 +102,13 @@ styles:
     (black) areas. One or two spot colors printed from additional blocks. Visible carving
     marks and slightly rough edges where the block didn't print perfectly. Looks handmade
     and imperfect. The texture of the block surface is visible.
+  - >-
+    Retro pixel art like a 16-bit video game. Chunky visible pixels, no anti-aliasing,
+    no smooth edges. Limited palette of 6-8 colors maximum. Characters are built from
+    large blocky pixel clusters — not detailed, not smooth. Black pixel outlines around
+    every shape. The entire image should look like a screenshot from a Super Nintendo or
+    Sega Genesis game — you should be able to count individual pixels. Backgrounds are
+    simple tiled patterns. Text should be in a blocky pixel font.
 
 gemini:
   image_model: 'gemini-3-pro-image-preview'
