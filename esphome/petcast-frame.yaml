@@ -1,34 +1,26 @@
 # Petcast ESPHome config for Seeed reTerminal E1002
 #
+# Modeled after the proven forecats config:
+# - Device wakes from deep sleep at 5:00 AM (via until timer)
+# - on_boot: LED on, battery check
+# - on_time 5:02: trigger generation on server
+# - on_time 5:04: fetch and display the image
+# - on_time 5:06: deep sleep until 5:00 AM tomorrow
+#
 # Buttons:
-#   Green:       wake from deep sleep (fetch latest image, no regeneration)
+#   Green: wake from deep sleep
 #   Right white: trigger regeneration (while awake)
-#   Left white:  toggle test pattern / petcast image
-#
-# Schedule:
-#   4:58 AM: deep sleep timer wakes, triggers generation, fetches, displays, sleeps
-#
-# Safety:
-#   Auto-sleeps after 5 minutes awake no matter what
+#   Left white: toggle test pattern
 
 esphome:
   name: petcast-frame
   friendly_name: Petcast Frame
   on_boot:
-    priority: -100
     then:
-      - logger.log: 'Boot: starting'
       - light.turn_on: onboard_led
+      - logger.log: "Device booted"
       - script.execute: update_battery_status
       - script.execute: sleep_watchdog
-      - logger.log: 'Boot: waiting for network...'
-      - delay: 5s
-      # Fetch and display the latest image (already generated or from last time)
-      - logger.log: 'Boot: fetching latest image'
-      - component.update: petcast_image
-      - logger.log: 'Boot: waiting for display refresh...'
-      - delay: 30s
-      - logger.log: 'Boot: complete (watchdog will sleep in ~9 min)'
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -52,9 +44,9 @@ wifi:
   password: !secret wifi_password
   on_connect:
     then:
-      - logger.log: 'WiFi connected'
+      - logger.log: "WiFi connected"
   ap:
-    ssid: 'Petcast-Frame Fallback'
+    ssid: "Petcast-Frame Fallback"
     password: !secret ap_password
 
 captive_portal:
@@ -62,22 +54,39 @@ captive_portal:
 time:
   - platform: homeassistant
     id: ha_time
-    timezone: 'America/Chicago'
+    timezone: "America/Chicago"
     on_time:
-      # 4:58 AM — the daily generation cycle
-      # (device wakes from deep sleep at 4:57, boot runs, then this fires)
+      # 5:02 AM — trigger image generation on server
       - seconds: 0
-        minutes: 58
-        hours: 4
+        minutes: 2
+        hours: 5
         then:
-          - logger.log: 'Scheduled: triggering daily generation'
+          - logger.log: "Scheduled: triggering generation"
           - script.execute: trigger_generation
+      # 5:04 AM — fetch and display the image
+      - seconds: 0
+        minutes: 4
+        hours: 5
+        then:
+          - logger.log: "Scheduled: fetching image"
+          - component.update: petcast_image
+      # 5:06 AM — go to deep sleep until 5:00 AM tomorrow
+      - seconds: 0
+        minutes: 6
+        hours: 5
+        then:
+          - logger.log: "Scheduled: entering deep sleep until 5:00 AM"
+          - light.turn_off: onboard_led
+          - deep_sleep.enter:
+              id: deep_sleep_ctrl
+              time_id: ha_time
+              until: "05:00:00"
 
 globals:
   - id: showing_test_pattern
     type: bool
     restore_value: false
-    initial_value: 'false'
+    initial_value: "false"
 
 spi:
   clk_pin: GPIO7
@@ -107,7 +116,7 @@ online_image:
     buffer_size: 65536
     url: http://mini:7777/output/latest.png
     on_download_finished:
-      - logger.log: 'Image downloaded, updating display'
+      - logger.log: "Image downloaded, updating display"
       - component.update: epaper_display
   - id: test_pattern_image
     format: PNG
@@ -115,46 +124,48 @@ online_image:
     buffer_size: 65536
     url: http://mini:7777/output/test_pattern.png
     on_download_finished:
-      - logger.log: 'Test pattern downloaded, updating display'
+      - logger.log: "Test pattern downloaded, updating display"
       - component.update: epaper_display
 
 # Green button wakes from deep sleep
 deep_sleep:
   id: deep_sleep_ctrl
-  wakeup_pin:
-    number: GPIO3
-    ignore_strapping_warning: true
+  wakeup_pin: GPIO3
   wakeup_pin_mode: INVERT_WAKEUP
 
 binary_sensor:
-  # Right white button = regenerate
+  # Right white button = regenerate now
   - platform: gpio
     pin:
       number: GPIO4
       mode: INPUT_PULLUP
-    name: 'Regenerate Button'
-    internal: true
+    name: "Manual Update Button"
     filters:
       - delayed_on: 50ms
     on_press:
       then:
-        - logger.log: 'Regenerate button pressed'
+        - logger.log: "Manual update button pressed"
         - script.execute: trigger_generation
         - delay: 120s
         - component.update: petcast_image
-  # Left white button = toggle test pattern
+  # Left white button = sleep until 5:00 AM
   - platform: gpio
     pin:
       number: GPIO5
       mode: INPUT_PULLUP
-    name: 'Test Pattern Button'
+    name: "Sleep Until 5:00am Button"
     internal: true
     filters:
       - delayed_on: 50ms
     on_press:
       then:
-        - logger.log: 'Test pattern toggle'
-        - script.execute: toggle_test_pattern
+        - logger.log: "Sleep button pressed"
+        - delay: 10s
+        - light.turn_off: onboard_led
+        - deep_sleep.enter:
+            id: deep_sleep_ctrl
+            time_id: ha_time
+            until: "05:00:00"
 
 script:
   - id: trigger_generation
@@ -169,31 +180,19 @@ script:
             snprintf(buf, sizeof(buf), "{\"battery\": %.0f}", id(battery_level).state);
             return buf;
       - logger.log:
-          format: 'Generation triggered (battery: %.0f%%)'
-          args: ['id(battery_level).state']
+          format: "Generation triggered (battery: %.0f%%)"
+          args: ["id(battery_level).state"]
 
-  - id: go_to_sleep
+  - id: sleep_watchdog
     mode: single
     then:
+      - delay: 600s
+      - logger.log: "Watchdog: 10 min awake, forcing sleep"
       - light.turn_off: onboard_led
-      - delay: 1s
-      - if:
-          condition:
-            - time.has_time:
-                id: ha_time
-          then:
-            - logger.log:
-                format: 'Time synced — sleeping until 4:57 AM (current: %02d:%02d)'
-                args: ['id(ha_time).now().hour', 'id(ha_time).now().minute']
-            - deep_sleep.enter:
-                id: deep_sleep_ctrl
-                time_id: ha_time
-                until: '04:57:00'
-          else:
-            - logger.log: 'WARNING: Time not synced — sleeping for 1 hour then retrying'
-            - deep_sleep.enter:
-                id: deep_sleep_ctrl
-                sleep_duration: 1h
+      - deep_sleep.enter:
+          id: deep_sleep_ctrl
+          time_id: ha_time
+          until: "05:00:00"
 
   - id: toggle_test_pattern
     mode: single
@@ -202,32 +201,26 @@ script:
           condition:
             - lambda: 'return id(showing_test_pattern);'
           then:
-            - logger.log: 'Switching to petcast image'
+            - logger.log: "Switching to petcast image"
             - lambda: 'id(showing_test_pattern) = false;'
             - component.update: epaper_display
           else:
-            - logger.log: 'Switching to test pattern'
+            - logger.log: "Switching to test pattern"
             - lambda: 'id(showing_test_pattern) = true;'
             - component.update: test_pattern_image
-
-  - id: sleep_watchdog
-    mode: single
-    then:
-      - delay: 600s
-      - logger.log: 'Watchdog: 10 min awake, sleeping'
-      - script.execute: go_to_sleep
 
   - id: update_battery_status
     mode: single
     then:
+      - logger.log: "Starting battery measurement"
       - output.turn_on: bsp_battery_enable
       - delay: 50ms
       - component.update: battery_voltage
       - component.update: battery_level
       - output.turn_off: bsp_battery_enable
       - logger.log:
-          format: 'Battery: %.0f%%'
-          args: ['id(battery_level).state']
+          format: "Battery: %.0f%%"
+          args: ["id(battery_level).state"]
 
 output:
   - platform: gpio
@@ -240,7 +233,7 @@ output:
 
 light:
   - platform: binary
-    name: 'Onboard LED'
+    name: "Onboard LED"
     internal: true
     output: led_output
     id: onboard_led
@@ -248,7 +241,7 @@ light:
 sensor:
   - platform: adc
     pin: GPIO1
-    name: 'Battery Voltage'
+    name: "Battery Voltage"
     id: battery_voltage
     internal: true
     update_interval: never
@@ -256,10 +249,10 @@ sensor:
     filters:
       - multiply: 2.0
   - platform: template
-    name: 'Battery Level'
+    name: "Battery Level"
     id: battery_level
-    unit_of_measurement: '%'
-    icon: 'mdi:battery'
+    unit_of_measurement: "%"
+    icon: "mdi:battery"
     device_class: battery
     state_class: measurement
     lambda: 'return id(battery_voltage).state;'
