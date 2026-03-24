@@ -1,26 +1,48 @@
 # Petcast ESPHome config for Seeed reTerminal E1002
 #
-# Modeled after the proven forecats config:
-# - Device wakes from deep sleep at 5:00 AM (via until timer)
-# - on_boot: LED on, battery check
-# - on_time 5:02: trigger generation on server
-# - on_time 5:04: fetch and display the image
-# - on_time 5:06: deep sleep until 5:00 AM tomorrow
+# Boot-driven flow:
+#   1. Wake from deep sleep (timer or green button)
+#   2. Wait for HA time sync
+#   3. POST /api/generate (server skips if already done today → 429)
+#   4. If 202: wait 2 min for generation, then fetch image
+#   5. If 429: fetch image immediately (already fresh)
+#   6. Display image, deep sleep until 5:00 AM
 #
 # Buttons:
-#   Green: wake from deep sleep
-#   Right white: trigger regeneration (while awake)
-#   Left white: toggle test pattern
+#   Green: wake from deep sleep (triggers normal boot flow)
+#   Right white: force regeneration (bypasses "already today" check)
+#   Left white: toggle test pattern / petcast image
 
 esphome:
   name: petcast-frame
   friendly_name: Petcast Frame
   on_boot:
+    priority: -100
     then:
       - light.turn_on: onboard_led
       - logger.log: "Device booted"
       - script.execute: update_battery_status
       - script.execute: sleep_watchdog
+      # Wait for HA time sync
+      - logger.log: "Waiting for HA time sync..."
+      - wait_until:
+          condition:
+            - time.has_time:
+                id: ha_time
+          timeout: 60s
+      - logger.log:
+          format: "Time synced: %02d:%02d"
+          args: ["id(ha_time).now().hour", "id(ha_time).now().minute"]
+      # Trigger generation (server returns 429 if already done today)
+      - script.execute: trigger_and_display
+      # Sleep until tomorrow
+      - delay: 5s
+      - logger.log: "Boot complete, sleeping until 5:00 AM"
+      - light.turn_off: onboard_led
+      - deep_sleep.enter:
+          id: deep_sleep_ctrl
+          time_id: ha_time
+          until: "05:00:00"
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -55,35 +77,13 @@ time:
   - platform: homeassistant
     id: ha_time
     timezone: "America/Chicago"
-    on_time:
-      # 5:02 AM — trigger image generation on server
-      - seconds: 0
-        minutes: 2
-        hours: 5
-        then:
-          - logger.log: "Scheduled: triggering generation"
-          - script.execute: trigger_generation
-      # 5:04 AM — fetch and display the image
-      - seconds: 0
-        minutes: 4
-        hours: 5
-        then:
-          - logger.log: "Scheduled: fetching image"
-          - component.update: petcast_image
-      # 5:06 AM — go to deep sleep until 5:00 AM tomorrow
-      - seconds: 0
-        minutes: 6
-        hours: 5
-        then:
-          - logger.log: "Scheduled: entering deep sleep until 5:00 AM"
-          - light.turn_off: onboard_led
-          - deep_sleep.enter:
-              id: deep_sleep_ctrl
-              time_id: ha_time
-              until: "05:00:00"
 
 globals:
   - id: showing_test_pattern
+    type: bool
+    restore_value: false
+    initial_value: "false"
+  - id: generation_accepted
     type: bool
     restore_value: false
     initial_value: "false"
@@ -134,43 +134,38 @@ deep_sleep:
   wakeup_pin_mode: INVERT_WAKEUP
 
 binary_sensor:
-  # Right white button = regenerate now
+  # Right white button = force regeneration
   - platform: gpio
     pin:
       number: GPIO4
       mode: INPUT_PULLUP
-    name: "Manual Update Button"
+    name: "Force Regenerate Button"
     filters:
       - delayed_on: 50ms
     on_press:
       then:
-        - logger.log: "Manual update button pressed"
-        - script.execute: trigger_generation
-        - delay: 120s
-        - component.update: petcast_image
-  # Left white button = sleep until 5:00 AM
+        - logger.log: "Force regenerate button pressed"
+        - script.execute: force_regenerate
+  # Left white button = toggle test pattern
   - platform: gpio
     pin:
       number: GPIO5
       mode: INPUT_PULLUP
-    name: "Sleep Until 5:00am Button"
+    name: "Test Pattern Button"
     internal: true
     filters:
       - delayed_on: 50ms
     on_press:
       then:
-        - logger.log: "Sleep button pressed"
-        - delay: 10s
-        - light.turn_off: onboard_led
-        - deep_sleep.enter:
-            id: deep_sleep_ctrl
-            time_id: ha_time
-            until: "05:00:00"
+        - logger.log: "Test pattern toggle"
+        - script.execute: toggle_test_pattern
 
 script:
-  - id: trigger_generation
+  - id: trigger_and_display
     mode: single
     then:
+      # POST to generate — check response code
+      - lambda: 'id(generation_accepted) = false;'
       - http_request.post:
           url: http://mini:7777/api/generate
           request_headers:
@@ -179,9 +174,57 @@ script:
             char buf[64];
             snprintf(buf, sizeof(buf), "{\"battery\": %.0f}", id(battery_level).state);
             return buf;
-      - logger.log:
-          format: "Generation triggered (battery: %.0f%%)"
-          args: ["id(battery_level).state"]
+          on_response:
+            - lambda: |-
+                id(generation_accepted) = (status_code == 202);
+            - logger.log:
+                format: "Generate response: %d (accepted=%d)"
+                args: ["status_code", "id(generation_accepted)"]
+      - if:
+          condition:
+            - lambda: 'return id(generation_accepted);'
+          then:
+            # 202 — generation started, wait for it
+            - logger.log: "Generation started, waiting 2 min..."
+            - delay: 120s
+          else:
+            # 429 or other — already generated today, skip wait
+            - logger.log: "Already generated today, fetching existing image"
+      # Fetch and display
+      - logger.log: "Fetching image..."
+      - component.update: petcast_image
+      - logger.log: "Waiting for display refresh..."
+      - delay: 30s
+
+  - id: force_regenerate
+    mode: single
+    then:
+      - http_request.post:
+          url: http://mini:7777/api/generate
+          request_headers:
+            Content-Type: application/json
+          body: !lambda |-
+            char buf[64];
+            snprintf(buf, sizeof(buf), "{\"battery\": %.0f, \"force\": true}", id(battery_level).state);
+            return buf;
+      - logger.log: "Force generation triggered, waiting 2 min..."
+      - delay: 120s
+      - component.update: petcast_image
+
+  - id: toggle_test_pattern
+    mode: single
+    then:
+      - if:
+          condition:
+            - lambda: 'return id(showing_test_pattern);'
+          then:
+            - logger.log: "Switching to petcast image — re-fetching..."
+            - lambda: 'id(showing_test_pattern) = false;'
+            - component.update: petcast_image
+          else:
+            - logger.log: "Switching to test pattern"
+            - lambda: 'id(showing_test_pattern) = true;'
+            - component.update: test_pattern_image
 
   - id: sleep_watchdog
     mode: single
@@ -193,21 +236,6 @@ script:
           id: deep_sleep_ctrl
           time_id: ha_time
           until: "05:00:00"
-
-  - id: toggle_test_pattern
-    mode: single
-    then:
-      - if:
-          condition:
-            - lambda: 'return id(showing_test_pattern);'
-          then:
-            - logger.log: "Switching to petcast image"
-            - lambda: 'id(showing_test_pattern) = false;'
-            - component.update: epaper_display
-          else:
-            - logger.log: "Switching to test pattern"
-            - lambda: 'id(showing_test_pattern) = true;'
-            - component.update: test_pattern_image
 
   - id: update_battery_status
     mode: single

@@ -3,8 +3,10 @@
 import json
 import threading
 import time
+from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from petcast.pipeline import run
 
@@ -33,7 +35,32 @@ class PetcastHandler(SimpleHTTPRequestHandler):
             self.send_error(404)
 
     def _handle_generate(self):
-        """Kick off generation in background, return 202 immediately."""
+        """Kick off generation in background, return 202 immediately.
+
+        Returns 429 if already generated today (unless force=true in body).
+        Returns 409 if a generation is already in progress.
+        Returns 202 if generation started.
+        """
+        # Parse body
+        battery_pct = None
+        force = False
+        content_length = int(self.headers.get("Content-Length", 0))
+        if content_length > 0:
+            try:
+                body = json.loads(self.rfile.read(content_length))
+                battery_pct = body.get("battery")
+                force = body.get("force", False)
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # Check if already generated today (skip if force=true)
+        if not force and self._already_generated_today():
+            self._json_response(429, {
+                "status": "already_generated_today",
+                "message": "Already generated an image today. Pass force=true to override.",
+            })
+            return
+
         with PetcastHandler._lock:
             if PetcastHandler._generating:
                 self._json_response(409, {
@@ -42,16 +69,6 @@ class PetcastHandler(SimpleHTTPRequestHandler):
                 })
                 return
             PetcastHandler._generating = True
-
-        # Parse optional battery percentage from POST body
-        battery_pct = None
-        content_length = int(self.headers.get("Content-Length", 0))
-        if content_length > 0:
-            try:
-                body = json.loads(self.rfile.read(content_length))
-                battery_pct = body.get("battery")
-            except (json.JSONDecodeError, ValueError):
-                pass
 
         # Return 202 immediately
         self._json_response(202, {
@@ -66,6 +83,23 @@ class PetcastHandler(SimpleHTTPRequestHandler):
             daemon=True,
         )
         thread.start()
+
+    def _already_generated_today(self) -> bool:
+        """Check if an image was already generated today in the location's timezone."""
+        metadata_path = self.root / "output" / "latest.json"
+        if not metadata_path.exists():
+            return False
+        try:
+            with open(metadata_path) as f:
+                metadata = json.load(f)
+            generated_at = metadata.get("generated_at", "")
+            tz_name = metadata.get("weather", {}).get("timezone", "UTC")
+            tz = ZoneInfo(tz_name)
+            generated_date = datetime.fromisoformat(generated_at).date()
+            today = datetime.now(tz).date()
+            return generated_date == today
+        except (ValueError, KeyError):
+            return False
 
     def _run_pipeline(self, battery_pct: float | None = None):
         """Run the generation pipeline in background."""
