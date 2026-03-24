@@ -17,6 +17,8 @@ groups:
     pets: [Margot, Pebble, Mumford, Fennec]
   - name: 'the cats'
     pets: [Mumford, Fennec]
+  - name: 'the past cats'
+    pets: [Patrick, Pixel]
 
 pets:
   - name: 'Margot'

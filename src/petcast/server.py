@@ -105,15 +105,15 @@ class PetcastHandler(SimpleHTTPRequestHandler):
         """Run the generation pipeline in background."""
         try:
             if battery_pct is not None:
-                print(f"[server] Starting generation (battery: {battery_pct:.0f}%)...")
+                print(f"[{time.strftime('%H:%M:%S')}] [server] Starting generation (battery: {battery_pct:.0f}%)...")
             else:
-                print(f"[server] Starting generation...")
+                print(f"[{time.strftime('%H:%M:%S')}] [server] Starting generation...")
             start = time.time()
             run(self.root, debug=False, battery_pct=battery_pct)
             elapsed = time.time() - start
-            print(f"[server] Generation complete in {elapsed:.1f}s")
+            print(f"[{time.strftime('%H:%M:%S')}] [server] Generation complete in {elapsed:.1f}s")
         except Exception as e:
-            print(f"[server] Generation failed: {e}")
+            print(f"[{time.strftime('%H:%M:%S')}] [server] Generation failed: {e}")
         finally:
             with PetcastHandler._lock:
                 PetcastHandler._generating = False
@@ -184,8 +184,8 @@ class PetcastHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, format, *args):
-        print(f"[server] {args[0]}")
+    def log_message(self, fmt, *args):
+        print(f"[{time.strftime('%H:%M:%S')}] [server] {args[0]}")
 
 
 def _generate_test_pattern(root: Path) -> None:
