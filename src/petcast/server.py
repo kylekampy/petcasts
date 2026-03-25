@@ -55,14 +55,19 @@ class PetcastHandler(SimpleHTTPRequestHandler):
 
         # Check if already generated today (skip if force=true)
         if not force and self._already_generated_today():
+            print(f"[{time.strftime('%H:%M:%S')}] [server] Rate limited: already generated today (battery={battery_pct})")
             self._json_response(429, {
                 "status": "already_generated_today",
                 "message": "Already generated an image today. Pass force=true to override.",
             })
             return
 
+        if force:
+            print(f"[{time.strftime('%H:%M:%S')}] [server] Force generation requested (battery={battery_pct})")
+
         with PetcastHandler._lock:
             if PetcastHandler._generating:
+                print(f"[{time.strftime('%H:%M:%S')}] [server] Rejected: generation already in progress")
                 self._json_response(409, {
                     "status": "already_generating",
                     "message": "A generation is already in progress",
@@ -71,6 +76,7 @@ class PetcastHandler(SimpleHTTPRequestHandler):
             PetcastHandler._generating = True
 
         # Return 202 immediately
+        print(f"[{time.strftime('%H:%M:%S')}] [server] Generation accepted (battery={battery_pct})")
         self._json_response(202, {
             "status": "accepted",
             "message": "Generation started",

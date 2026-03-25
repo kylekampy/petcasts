@@ -20,21 +20,29 @@ esphome:
     priority: -100
     then:
       - light.turn_on: onboard_led
-      - logger.log: 'Device booted'
+      - lambda: 'id(boot_count) += 1;'
+      - lambda: 'id(last_boot_step) = "booted";'
+      - component.update: wake_reason_sensor
+      - component.update: boot_count_sensor
+      - logger.log: "Device booted"
       - script.execute: update_battery_status
       - script.execute: sleep_watchdog
       # Wait for HA time sync
-      - logger.log: 'Waiting for HA time sync...'
+      - lambda: 'id(last_boot_step) = "waiting_for_time";'
+      - logger.log: "Waiting for HA time sync..."
       - wait_until:
           condition:
             - time.has_time:
                 id: ha_time
           timeout: 60s
+      - lambda: 'id(last_boot_step) = "time_synced";'
       - logger.log:
-          format: 'Time synced: %02d:%02d'
-          args: ['id(ha_time).now().hour', 'id(ha_time).now().minute']
+          format: "Time synced: %02d:%02d"
+          args: ["id(ha_time).now().hour", "id(ha_time).now().minute"]
       # Trigger generation (server returns 429 if already done today)
+      - lambda: 'id(last_boot_step) = "triggering_generation";'
       - script.execute: trigger_and_display
+      - lambda: 'id(last_boot_step) = "complete";'
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -74,7 +82,23 @@ globals:
   - id: generation_accepted
     type: bool
     restore_value: false
-    initial_value: 'false'
+    initial_value: "false"
+  - id: boot_count
+    type: int
+    restore_value: true
+    initial_value: "0"
+  - id: last_boot_step
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  - id: last_generate_result
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  - id: last_image_download
+    type: std::string
+    restore_value: false
+    initial_value: '""'
 
 spi:
   clk_pin: GPIO7
@@ -100,7 +124,8 @@ online_image:
     buffer_size: 65536
     url: http://mini:7777/output/latest.png
     on_download_finished:
-      - logger.log: 'Image downloaded, updating display'
+      - lambda: 'id(last_image_download) = "downloaded";'
+      - logger.log: "Image downloaded, updating display"
       - component.update: epaper_display
 
 # Green button wakes from deep sleep
@@ -144,6 +169,7 @@ script:
     then:
       # POST to generate — server returns 429 if already done today
       - lambda: 'id(generation_accepted) = true;'
+      - lambda: 'id(last_generate_result) = "posting";'
       - http_request.post:
           url: http://mini:7777/api/generate
           request_headers:
@@ -153,21 +179,27 @@ script:
             snprintf(buf, sizeof(buf), "{\"battery\": %.0f}", id(battery_level).state);
             return buf;
           on_error:
-            - lambda: 'id(generation_accepted) = false;'
-            - logger.log: 'Server rejected generation (already done today or error)'
+            - lambda: |-
+                id(generation_accepted) = false;
+                id(last_generate_result) = "rejected_or_error";
+            - logger.log: "Server rejected generation (already done today or error)"
       - if:
           condition:
             - lambda: 'return id(generation_accepted);'
           then:
-            - logger.log: 'Generation started, waiting 2 min...'
+            - lambda: 'id(last_generate_result) = "accepted_waiting";'
+            - logger.log: "Generation started, waiting 2 min..."
             - delay: 120s
+            - lambda: 'id(last_generate_result) = "accepted_done";'
           else:
-            - logger.log: 'Skipping wait, fetching existing image'
+            - logger.log: "Skipping wait, fetching existing image"
       # Fetch and display
-      - logger.log: 'Fetching image...'
+      - lambda: 'id(last_image_download) = "downloading";'
+      - logger.log: "Fetching image..."
       - component.update: frame_image
-      - logger.log: 'Waiting for display refresh...'
+      - logger.log: "Waiting for display refresh..."
       - delay: 60s
+      - lambda: 'id(last_image_download) = "complete";'
 
   - id: force_regenerate
     mode: single
@@ -230,7 +262,41 @@ light:
     output: led_output
     id: onboard_led
 
+text_sensor:
+  - platform: template
+    name: "Last Boot Step"
+    id: last_boot_step_sensor
+    lambda: 'return id(last_boot_step);'
+    update_interval: 5s
+  - platform: template
+    name: "Last Generate Result"
+    id: last_generate_result_sensor
+    lambda: 'return id(last_generate_result);'
+    update_interval: 5s
+  - platform: template
+    name: "Last Image Download"
+    id: last_image_download_sensor
+    lambda: 'return id(last_image_download);'
+    update_interval: 5s
+  - platform: template
+    name: "Wake Reason"
+    id: wake_reason_sensor
+    lambda: |-
+      auto cause = esp_sleep_get_wakeup_cause();
+      if (cause == ESP_SLEEP_WAKEUP_TIMER) return std::string("timer");
+      if (cause == ESP_SLEEP_WAKEUP_EXT0) return std::string("button");
+      if (cause == ESP_SLEEP_WAKEUP_UNDEFINED) return std::string("power_on");
+      return std::string("other");
+    update_interval: never
+
 sensor:
+  - platform: template
+    name: "Boot Count"
+    id: boot_count_sensor
+    lambda: 'return id(boot_count);'
+    update_interval: never
+    accuracy_decimals: 0
+    icon: "mdi:counter"
   - platform: adc
     pin: GPIO1
     name: 'Battery Voltage'
