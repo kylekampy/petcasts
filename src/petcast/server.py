@@ -1,6 +1,7 @@
 """Lightweight HTTP server for frame-driven generation."""
 
 import json
+import logging
 import threading
 import time
 from datetime import datetime
@@ -9,6 +10,8 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from petcast.pipeline import run
+
+logger = logging.getLogger("petcast")
 
 
 class PetcastHandler(SimpleHTTPRequestHandler):
@@ -55,7 +58,7 @@ class PetcastHandler(SimpleHTTPRequestHandler):
 
         # Check if already generated today (skip if force=true)
         if not force and self._already_generated_today():
-            print(f"[{time.strftime('%H:%M:%S')}] [server] Rate limited: already generated today (battery={battery_pct})")
+            logger.info("Rate limited: already generated today (battery=%s)", battery_pct)
             self._json_response(429, {
                 "status": "already_generated_today",
                 "message": "Already generated an image today. Pass force=true to override.",
@@ -63,11 +66,11 @@ class PetcastHandler(SimpleHTTPRequestHandler):
             return
 
         if force:
-            print(f"[{time.strftime('%H:%M:%S')}] [server] Force generation requested (battery={battery_pct})")
+            logger.info("Force generation requested (battery=%s)", battery_pct)
 
         with PetcastHandler._lock:
             if PetcastHandler._generating:
-                print(f"[{time.strftime('%H:%M:%S')}] [server] Rejected: generation already in progress")
+                logger.info("Rejected: generation already in progress")
                 self._json_response(409, {
                     "status": "already_generating",
                     "message": "A generation is already in progress",
@@ -76,7 +79,7 @@ class PetcastHandler(SimpleHTTPRequestHandler):
             PetcastHandler._generating = True
 
         # Return 202 immediately
-        print(f"[{time.strftime('%H:%M:%S')}] [server] Generation accepted (battery={battery_pct})")
+        logger.info("Generation accepted (battery=%s)", battery_pct)
         self._json_response(202, {
             "status": "accepted",
             "message": "Generation started",
@@ -111,15 +114,15 @@ class PetcastHandler(SimpleHTTPRequestHandler):
         """Run the generation pipeline in background."""
         try:
             if battery_pct is not None:
-                print(f"[{time.strftime('%H:%M:%S')}] [server] Starting generation (battery: {battery_pct:.0f}%)...")
+                logger.info("Starting generation (battery: %.0f%%)...", battery_pct)
             else:
-                print(f"[{time.strftime('%H:%M:%S')}] [server] Starting generation...")
+                logger.info("Starting generation...")
             start = time.time()
             run(self.root, debug=False, battery_pct=battery_pct)
             elapsed = time.time() - start
-            print(f"[{time.strftime('%H:%M:%S')}] [server] Generation complete in {elapsed:.1f}s")
+            logger.info("Generation complete in %.1fs", elapsed)
         except Exception as e:
-            print(f"[{time.strftime('%H:%M:%S')}] [server] Generation failed: {e}")
+            logger.error("Generation failed: %s", e)
         finally:
             with PetcastHandler._lock:
                 PetcastHandler._generating = False
@@ -191,7 +194,7 @@ class PetcastHandler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def log_message(self, fmt, *args):
-        print(f"[{time.strftime('%H:%M:%S')}] [server] {args[0]}")
+        logger.info(args[0])
 
 
 def _generate_test_pattern(root: Path) -> None:
@@ -256,21 +259,26 @@ def _generate_test_pattern(root: Path) -> None:
     out = root / "output" / "test_pattern.png"
     out.parent.mkdir(parents=True, exist_ok=True)
     img.save(out, "PNG")
-    print(f"[server] Test pattern saved to {out}")
+    logger.info("Test pattern saved to %s", out)
 
 
 def serve(root: Path, port: int = 7777):
     """Start the petcast HTTP server."""
+    logging.basicConfig(
+        format="%(asctime)s [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=logging.INFO,
+    )
     PetcastHandler.root = root.resolve()
     _generate_test_pattern(root.resolve())
 
     server = HTTPServer(("0.0.0.0", port), PetcastHandler)
-    print(f"[{time.strftime('%H:%M:%S')}] Petcast server listening on port {port}")
-    print(f"  POST /api/generate    — trigger image generation")
-    print(f"  GET  /api/status      — check status / latest metadata")
-    print(f"  GET  /output/latest.png — fetch the latest image")
+    logger.info("Petcast server listening on port %d", port)
+    logger.info("  POST /api/generate    — trigger image generation")
+    logger.info("  GET  /api/status      — check status / latest metadata")
+    logger.info("  GET  /output/latest.png — fetch the latest image")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nShutting down...")
+        logger.info("Shutting down...")
         server.shutdown()
