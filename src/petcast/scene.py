@@ -146,7 +146,7 @@ a charming but noticeable part of the scene.
             raw = raw[: raw.rfind("```")]
         raw = raw.strip()
 
-    data = json.loads(raw)
+    data, _ = json.JSONDecoder().raw_decode(raw)
 
     return SceneDescription(
         activity=data["activity"],

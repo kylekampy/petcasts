@@ -21,28 +21,47 @@ esphome:
     then:
       - light.turn_on: onboard_led
       - lambda: 'id(boot_count) += 1;'
-      - lambda: 'id(last_boot_step_sensor).publish_state("booted");'
+      - text_sensor.template.publish:
+          id: last_boot_step_sensor
+          state: "booted"
       - component.update: wake_reason_sensor
       - component.update: boot_count_sensor
       - logger.log: "Device booted"
       - script.execute: update_battery_status
       - script.execute: sleep_watchdog
+      # Wait for WiFi before anything network-dependent
+      - text_sensor.template.publish:
+          id: last_boot_step_sensor
+          state: "waiting_for_wifi"
+      - logger.log: "Waiting for WiFi..."
+      - wait_until:
+          condition:
+            - wifi.connected:
+          timeout: 30s
       # Wait for HA time sync
-      - lambda: 'id(last_boot_step_sensor).publish_state("waiting_for_time");'
+      - text_sensor.template.publish:
+          id: last_boot_step_sensor
+          state: "waiting_for_time"
       - logger.log: "Waiting for HA time sync..."
       - wait_until:
           condition:
             - time.has_time:
                 id: ha_time
           timeout: 60s
-      - lambda: 'id(last_boot_step_sensor).publish_state("time_synced");'
+      - text_sensor.template.publish:
+          id: last_boot_step_sensor
+          state: "time_synced"
       - logger.log:
           format: "Time synced: %02d:%02d"
           args: ["id(ha_time).now().hour", "id(ha_time).now().minute"]
       # Trigger generation (server returns 429 if already done today)
-      - lambda: 'id(last_boot_step_sensor).publish_state("triggering_generation");'
+      - text_sensor.template.publish:
+          id: last_boot_step_sensor
+          state: "triggering_generation"
       - script.execute: trigger_and_display
-      - lambda: 'id(last_boot_step_sensor).publish_state("complete");'
+      - text_sensor.template.publish:
+          id: last_boot_step_sensor
+          state: "complete"
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -112,9 +131,14 @@ online_image:
     buffer_size: 65536
     url: http://mini:7777/output/latest.png
     on_download_finished:
-      - lambda: 'id(last_image_download_sensor).publish_state("downloaded");'
+      - text_sensor.template.publish:
+          id: last_image_download_sensor
+          state: "downloaded"
       - logger.log: "Image downloaded, updating display"
       - component.update: epaper_display
+      - logger.log: "Display refreshing, sleeping in 60s..."
+      - delay: 60s
+      - script.execute: go_to_sleep
 
 # Green button wakes from deep sleep
 deep_sleep:
@@ -146,18 +170,19 @@ binary_sensor:
       - delayed_on: 50ms
     on_press:
       then:
-        - logger.log: 'Refresh button pressed — fetching and sleeping'
+        - logger.log: 'Refresh button pressed'
         - component.update: frame_image
-        - delay: 60s
-        - script.execute: go_to_sleep
+        # on_download_finished handles display and sleep
 
 script:
   - id: trigger_and_display
     mode: single
     then:
       # POST to generate — server returns 429 if already done today
-      - lambda: 'id(generation_accepted) = true;'
-      - lambda: 'id(last_generate_result_sensor).publish_state("posting");'
+      - lambda: 'id(generation_accepted) = false;'
+      - text_sensor.template.publish:
+          id: last_generate_result_sensor
+          state: "posting"
       - http_request.post:
           url: http://mini:7777/api/generate
           request_headers:
@@ -166,32 +191,53 @@ script:
             char buf[64];
             snprintf(buf, sizeof(buf), "{\"battery\": %.0f}", id(battery_level).state);
             return buf;
-          on_error:
+          on_response:
             - lambda: |-
-                id(generation_accepted) = false;
-                id(last_generate_result_sensor).publish_state("rejected_or_error");
-            - logger.log: "Server rejected generation (already done today or error)"
+                if (response->status_code == 200 || response->status_code == 202) {
+                  id(generation_accepted) = true;
+                  ESP_LOGI("petcast", "Generation accepted (%d)", response->status_code);
+                } else {
+                  ESP_LOGI("petcast", "Generation skipped or error (%d)", response->status_code);
+                }
+            - if:
+                condition:
+                  - lambda: 'return !id(generation_accepted);'
+                then:
+                  - text_sensor.template.publish:
+                      id: last_generate_result_sensor
+                      state: "rejected_or_error"
+          on_error:
+            - lambda: 'id(generation_accepted) = false;'
+            - text_sensor.template.publish:
+                id: last_generate_result_sensor
+                state: "connection_error"
+            - logger.log: "HTTP request failed (network/timeout)"
       - if:
           condition:
             - lambda: 'return id(generation_accepted);'
           then:
-            - lambda: 'id(last_generate_result_sensor).publish_state("accepted_waiting");'
+            - text_sensor.template.publish:
+                id: last_generate_result_sensor
+                state: "accepted_waiting"
             - logger.log: "Generation started, waiting 2 min..."
             - delay: 120s
-            - lambda: 'id(last_generate_result_sensor).publish_state("accepted_done");'
+            - text_sensor.template.publish:
+                id: last_generate_result_sensor
+                state: "accepted_done"
           else:
             - logger.log: "Skipping wait, fetching existing image"
-      # Fetch and display
-      - lambda: 'id(last_image_download_sensor).publish_state("downloading");'
+      # Fetch and display — on_download_finished handles display refresh and sleep
+      # If download fails, watchdog handles sleep (leaves OTA window)
+      - text_sensor.template.publish:
+          id: last_image_download_sensor
+          state: "downloading"
       - logger.log: "Fetching image..."
       - component.update: frame_image
-      - logger.log: "Waiting for display refresh..."
-      - delay: 60s
-      - lambda: 'id(last_image_download_sensor).publish_state("complete");'
 
   - id: force_regenerate
     mode: single
     then:
+      - lambda: 'id(generation_accepted) = false;'
       - http_request.post:
           url: http://mini:7777/api/generate
           request_headers:
@@ -200,9 +246,26 @@ script:
             char buf[64];
             snprintf(buf, sizeof(buf), "{\"battery\": %.0f, \"force\": true}", id(battery_level).state);
             return buf;
-      - logger.log: 'Force generation triggered, waiting 2 min...'
-      - delay: 120s
-      - component.update: frame_image
+          on_response:
+            - lambda: |-
+                if (response->status_code == 200 || response->status_code == 202) {
+                  id(generation_accepted) = true;
+                  ESP_LOGI("petcast", "Force generation accepted (%d)", response->status_code);
+                } else {
+                  ESP_LOGW("petcast", "Force generation failed (%d)", response->status_code);
+                }
+          on_error:
+            - logger.log: "Force generate request failed (network/timeout)"
+      - if:
+          condition:
+            - lambda: 'return id(generation_accepted);'
+          then:
+            - logger.log: 'Force generation triggered, waiting 2 min...'
+            - delay: 120s
+            - component.update: frame_image
+          else:
+            - logger.log: 'Force generation failed, fetching existing image'
+            - component.update: frame_image
 
   - id: go_to_sleep
     mode: single

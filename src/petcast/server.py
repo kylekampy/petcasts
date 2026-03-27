@@ -265,7 +265,7 @@ def serve(root: Path, port: int = 7777):
     _generate_test_pattern(root.resolve())
 
     server = HTTPServer(("0.0.0.0", port), PetcastHandler)
-    print(f"Petcast server listening on port {port}")
+    print(f"[{time.strftime('%H:%M:%S')}] Petcast server listening on port {port}")
     print(f"  POST /api/generate    — trigger image generation")
     print(f"  GET  /api/status      — check status / latest metadata")
     print(f"  GET  /output/latest.png — fetch the latest image")
