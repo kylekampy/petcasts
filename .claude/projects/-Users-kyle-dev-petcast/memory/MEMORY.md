@@ -1,0 +1,2 @@
+- [Verify everything written](feedback_verify_code.md) — comprehensive tests required for all code, not just unit tests
+- [Don't create GitHub PRs](feedback_no_prs.md) — user creates their own PRs, just commit and push

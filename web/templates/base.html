@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{block "title" .}}Petcast{{end}}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+  {{if .User}}
+  <nav class="container-fluid">
+    <ul>
+      <li><a href="/dashboard" class="nav-brand"><strong>Petcast</strong></a></li>
+    </ul>
+    <ul>
+      <li><a href="/dashboard">Dashboard</a></li>
+      <li><a href="/pets">Pets</a></li>
+      <li><a href="/groups">Groups</a></li>
+      <li><a href="/styles">Styles</a></li>
+      <li><a href="/history">History</a></li>
+      <li><a href="/frames">Frames</a></li>
+      <li>
+        <details class="dropdown">
+          <summary class="nav-user">
+            {{if .User.PictureURL}}<img src="{{.User.PictureURL}}" alt="{{.User.Name}}" class="nav-avatar">{{end}}
+            {{.User.Name}}
+          </summary>
+          <ul>
+            <li><a href="/settings">Settings</a></li>
+            <li><a href="/auth/logout">Logout</a></li>
+          </ul>
+        </details>
+      </li>
+    </ul>
+  </nav>
+  {{end}}
+  <main class="container">
+    {{block "content" .}}{{end}}
+  </main>
+</body>
+</html>

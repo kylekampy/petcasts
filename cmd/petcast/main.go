@@ -15,12 +15,14 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
+	"github.com/kylekampy/petcasts/internal/auth"
 	"github.com/kylekampy/petcasts/internal/config"
 	"github.com/kylekampy/petcasts/internal/db"
 	"github.com/kylekampy/petcasts/internal/gemini"
 	"github.com/kylekampy/petcasts/internal/pipeline"
 	"github.com/kylekampy/petcasts/internal/server"
 	"github.com/kylekampy/petcasts/internal/storage"
+	"github.com/kylekampy/petcasts/internal/web"
 )
 
 func main() {
@@ -89,8 +91,33 @@ func main() {
 		pairCode = generatePairingCode()
 	}
 
-	// Server
+	// Auth (optional — skip if no Google OAuth credentials)
+	sessions := auth.NewSessionManager(database)
+	var googleAuth *auth.GoogleAuth
+	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
+	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	if googleClientID != "" && googleClientSecret != "" {
+		baseURL := fmt.Sprintf("http://localhost:%d", port)
+		redirectURL := baseURL + "/auth/google/callback"
+		googleAuth = auth.NewGoogleAuth(googleClientID, googleClientSecret, redirectURL, sessions)
+		logger.Info("Google OAuth enabled")
+	} else {
+		logger.Warn("Google OAuth disabled (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set)")
+	}
+
+	// Web dashboard
+	templateDir := filepath.Join(dataDir, "web", "templates")
+	webApp, err := web.New(cfg, database, store, sessions, googleAuth, pairCode,
+		logger.With("component", "web"), templateDir)
+	if err != nil {
+		logger.Error("failed to initialize web app", "error", err)
+		os.Exit(1)
+	}
+
+	// Server (frame API + web dashboard)
 	srv := server.New(cfg, database, store, pipe, pairCode, logger.With("component", "server"))
+	srv.SetWeb(webApp)
+
 	addr := fmt.Sprintf(":%d", port)
 	logger.Info("petcast server starting",
 		"addr", addr,

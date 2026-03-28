@@ -1,0 +1,33 @@
+{{define "title"}}Styles - Petcast{{end}}
+
+{{define "content"}}
+<hgroup>
+  <h1>Styles</h1>
+  <p>Choose which art styles are eligible for your daily generations.</p>
+</hgroup>
+
+{{if .Styles}}
+<div class="card-grid">
+  {{range .Styles}}
+  <article class="style-card {{if not .Enabled}}style-card--disabled{{end}}">
+    <p class="style-description">{{.Description}}</p>
+    <footer>
+      <label class="toggle-switch">
+        <input
+          type="checkbox"
+          {{if .Enabled}}checked{{end}}
+          hx-post="/styles/toggle"
+          hx-vals='{"index": {{.Index}}, "enabled": {{if .Enabled}}false{{else}}true{{end}}}'
+          hx-target="closest article"
+          hx-swap="outerHTML">
+        <span class="toggle-slider"></span>
+      </label>
+      <small class="secondary">{{if .Enabled}}Enabled{{else}}Disabled{{end}}</small>
+    </footer>
+  </article>
+  {{end}}
+</div>
+{{else}}
+<p>No styles configured. Add styles to your <code>config.yaml</code>.</p>
+{{end}}
+{{end}}

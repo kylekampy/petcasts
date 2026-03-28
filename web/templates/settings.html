@@ -1,0 +1,55 @@
+{{define "title"}}Settings - Petcast{{end}}
+
+{{define "content"}}
+<hgroup>
+  <h1>Settings</h1>
+  <p>Configure your location and preferences.</p>
+</hgroup>
+
+<section>
+  <h2>Location</h2>
+  <p class="secondary">Used for weather data in your daily generation prompts.</p>
+  <form
+    hx-post="/settings/location"
+    hx-target="#location-feedback"
+    hx-swap="innerHTML">
+    <div class="grid">
+      <label>
+        Location Name
+        <input type="text" name="location_name" value="{{.User.LocationName}}" placeholder="e.g. Chicago, IL">
+      </label>
+    </div>
+    <div class="grid">
+      <label>
+        Latitude
+        <input type="number" name="latitude" value="{{.User.Latitude}}" step="0.0001" placeholder="e.g. 41.8781">
+      </label>
+      <label>
+        Longitude
+        <input type="number" name="longitude" value="{{.User.Longitude}}" step="0.0001" placeholder="e.g. -87.6298">
+      </label>
+    </div>
+    <label>
+      Timezone
+      <select name="timezone">
+        {{range .Timezones}}
+        <option value="{{.}}" {{if eq . $.User.Timezone}}selected{{end}}>{{.}}</option>
+        {{end}}
+      </select>
+    </label>
+    <button type="submit">Save Location</button>
+    <span id="location-feedback"></span>
+  </form>
+</section>
+
+<section>
+  <h2>Account</h2>
+  <dl>
+    <dt>Name</dt>
+    <dd>{{.User.Name}}</dd>
+    <dt>Email</dt>
+    <dd>{{.User.Email}}</dd>
+  </dl>
+  <a href="/auth/logout" role="button" class="secondary outline">Logout</a>
+</section>
+{{end}}

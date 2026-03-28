@@ -16,3 +16,4 @@ esphome/secrets.yaml
 *.db-shm
 *.db-wal
 generations/
+output/test_pattern.png

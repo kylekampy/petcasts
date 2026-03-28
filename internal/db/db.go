@@ -115,8 +115,76 @@ func (d *DB) migrate() error {
 			style TEXT NOT NULL DEFAULT '',
 			scene_activity TEXT NOT NULL DEFAULT ''
 		);
+
+		CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			email TEXT NOT NULL UNIQUE,
+			name TEXT NOT NULL DEFAULT '',
+			picture_url TEXT NOT NULL DEFAULT '',
+			google_id TEXT UNIQUE,
+			timezone TEXT NOT NULL DEFAULT 'America/Chicago',
+			location_name TEXT NOT NULL DEFAULT '',
+			latitude REAL NOT NULL DEFAULT 0,
+			longitude REAL NOT NULL DEFAULT 0,
+			created_at TEXT NOT NULL
+		);
+
+		CREATE TABLE IF NOT EXISTS sessions (
+			token_hash TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			expires_at TEXT NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);
+
+		CREATE TABLE IF NOT EXISTS user_pets (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			description TEXT NOT NULL DEFAULT '',
+			portrait_path TEXT NOT NULL DEFAULT '',
+			sort_order INTEGER NOT NULL DEFAULT 0,
+			created_at TEXT NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);
+
+		CREATE TABLE IF NOT EXISTS user_photos (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			filename TEXT NOT NULL,
+			path TEXT NOT NULL,
+			pet_ids TEXT NOT NULL DEFAULT '[]',
+			created_at TEXT NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);
+
+		CREATE TABLE IF NOT EXISTS user_groups (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			pet_ids TEXT NOT NULL DEFAULT '[]',
+			weight REAL NOT NULL DEFAULT 1.0,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);
+
+		CREATE TABLE IF NOT EXISTS user_styles (
+			user_id TEXT NOT NULL,
+			style_index INTEGER NOT NULL,
+			enabled INTEGER NOT NULL DEFAULT 1,
+			PRIMARY KEY (user_id, style_index),
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Add user_id to frames if not already present (migration)
+	d.db.Exec(`ALTER TABLE frames ADD COLUMN user_id TEXT REFERENCES users(id)`)
+	// Add user_id to selection_history if not present
+	d.db.Exec(`ALTER TABLE selection_history ADD COLUMN user_id TEXT`)
+
+	return nil
 }
 
 // GenerateToken creates a cryptographically random API token.

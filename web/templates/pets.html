@@ -1,0 +1,108 @@
+{{define "title"}}Pets - Petcast{{end}}
+
+{{define "content"}}
+<hgroup>
+  <h1>Pets</h1>
+  <p>Manage the pets that appear in your daily frames.</p>
+</hgroup>
+
+<div id="pet-list" class="card-grid">
+  {{range .Pets}}
+  <article class="pet-card" id="pet-{{.ID}}">
+    <header>
+      {{if .PortraitPath}}
+      <img src="/files/{{.PortraitPath}}" alt="{{.Name}}" class="pet-portrait">
+      {{else}}
+      <div class="pet-portrait pet-portrait-placeholder" aria-hidden="true"></div>
+      {{end}}
+      <strong>{{.Name}}</strong>
+    </header>
+    <p>{{if .Description}}{{.Description}}{{else}}<em class="secondary">No description yet.</em>{{end}}</p>
+    <footer>
+      <button class="secondary outline"
+        data-pet-id="{{.ID}}"
+        data-pet-name="{{.Name}}"
+        data-pet-description="{{.Description}}"
+        onclick="openEditPet(this.dataset.petId, this.dataset.petName, this.dataset.petDescription)">Edit</button>
+      <button class="contrast outline"
+        hx-delete="/pets/{{.ID}}"
+        hx-target="#pet-list"
+        hx-swap="outerHTML"
+        hx-confirm="Delete {{.Name}}?">
+        Delete
+      </button>
+    </footer>
+  </article>
+  {{end}}
+</div>
+
+<section>
+  <h2 id="add-pet-heading">Add a Pet</h2>
+  <form
+    hx-post="/pets"
+    hx-target="#pet-list"
+    hx-swap="outerHTML"
+    hx-encoding="multipart/form-data"
+    hx-on::after-request="this.reset()">
+    <div class="grid">
+      <label>
+        Name
+        <input type="text" name="name" placeholder="e.g. Mochi" required>
+      </label>
+      <label>
+        Portrait
+        <input type="file" name="portrait" accept="image/*">
+      </label>
+    </div>
+    <label>
+      Description
+      <textarea name="description" rows="3" placeholder="Describe your pet — breed, personality, markings..."></textarea>
+    </label>
+    <button type="submit">Add Pet</button>
+  </form>
+</section>
+
+<dialog id="edit-pet-dialog">
+  <article>
+    <header>
+      <button rel="prev" onclick="document.getElementById('edit-pet-dialog').close()" aria-label="Close"></button>
+      <h3>Edit Pet</h3>
+    </header>
+    <form
+      id="edit-pet-form"
+      hx-target="#pet-list"
+      hx-swap="outerHTML"
+      hx-encoding="multipart/form-data"
+      hx-on::after-request="document.getElementById('edit-pet-dialog').close()">
+      <input type="hidden" name="_method" value="PUT">
+      <label>
+        Name
+        <input type="text" id="edit-pet-name" name="name" required>
+      </label>
+      <label>
+        Description
+        <textarea id="edit-pet-description" name="description" rows="3"></textarea>
+      </label>
+      <label>
+        New Portrait (optional)
+        <input type="file" name="portrait" accept="image/*">
+      </label>
+      <footer>
+        <button type="button" class="secondary" onclick="document.getElementById('edit-pet-dialog').close()">Cancel</button>
+        <button type="submit">Save</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+
+<script>
+function openEditPet(id, name, description) {
+  var form = document.getElementById('edit-pet-form');
+  form.setAttribute('hx-put', '/pets/' + id);
+  htmx.process(form);
+  document.getElementById('edit-pet-name').value = name;
+  document.getElementById('edit-pet-description').value = description;
+  document.getElementById('edit-pet-dialog').showModal();
+}
+</script>
+{{end}}

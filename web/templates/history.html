@@ -1,0 +1,29 @@
+{{define "title"}}History - Petcast{{end}}
+
+{{define "content"}}
+<hgroup>
+  <h1>History</h1>
+  <p>Browse past generated images.</p>
+</hgroup>
+
+{{if .Generations}}
+<div class="image-grid">
+  {{range .Generations}}
+  <article class="history-card">
+    <a href="/files/{{.OriginalPath}}" target="_blank" rel="noopener">
+      <img src="/files/{{.OriginalPath}}" alt="Generation from {{.CreatedAt.Format "Jan 2, 2006"}}" loading="lazy">
+    </a>
+    <footer>
+      <small>
+        <strong>{{.CreatedAt.Format "Jan 2, 2006"}}</strong><br>
+        {{if .Pets}}<span class="secondary">{{.Pets}}</span><br>{{end}}
+        {{if .Style}}<em class="style-snippet">{{.Style}}</em>{{end}}
+      </small>
+    </footer>
+  </article>
+  {{end}}
+</div>
+{{else}}
+<p>No generations yet. Once your frame generates its first image, it will appear here.</p>
+{{end}}
+{{end}}

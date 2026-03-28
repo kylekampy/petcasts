@@ -16,6 +16,11 @@ import (
 	"github.com/kylekampy/petcasts/internal/storage"
 )
 
+// WebApp is the interface the web dashboard must implement.
+type WebApp interface {
+	RegisterRoutes(mux *http.ServeMux)
+}
+
 type Server struct {
 	Config      *config.Config
 	DB          *db.DB
@@ -24,8 +29,14 @@ type Server struct {
 	PairingCode string
 	Logger      *slog.Logger
 
+	web        WebApp
 	mu         sync.Mutex
 	generating map[string]bool // frameID -> currently generating
+}
+
+// SetWeb attaches the web dashboard to the server.
+func (s *Server) SetWeb(w WebApp) {
+	s.web = w
 }
 
 func New(cfg *config.Config, database *db.DB, store *storage.Local, pipe *pipeline.Pipeline, pairingCode string, logger *slog.Logger) *Server {
@@ -54,6 +65,14 @@ func (s *Server) Handler() http.Handler {
 
 	// Serve stored files (images)
 	mux.Handle("GET /files/", http.StripPrefix("/files/", http.FileServer(http.Dir(s.Store.Root))))
+
+	// Static files for web dashboard
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
+
+	// Web dashboard routes
+	if s.web != nil {
+		s.web.RegisterRoutes(mux)
+	}
 
 	return logMiddleware(mux, s.Logger)
 }

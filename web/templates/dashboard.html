@@ -1,0 +1,76 @@
+{{define "title"}}Dashboard - Petcast{{end}}
+
+{{define "content"}}
+<hgroup>
+  <h1>Dashboard</h1>
+  <p>Your pet frame overview for today.</p>
+</hgroup>
+
+<div class="grid">
+  <section>
+    <h2>Today's Image</h2>
+    {{if .TodayImage}}
+    <figure>
+      <img src="/files/{{.TodayImage}}" alt="Today's generated image" style="max-width:100%;border-radius:var(--pico-border-radius);">
+    </figure>
+    {{else}}
+    <p class="secondary">No image generated yet today.</p>
+    {{end}}
+  </section>
+
+  <section>
+    <h2>Quick Stats</h2>
+    <dl>
+      <dt>Total Pets</dt>
+      <dd>{{.TotalPets}}</dd>
+      <dt>Total Generations</dt>
+      <dd>{{.TotalGenerations}}</dd>
+    </dl>
+  </section>
+</div>
+
+<section>
+  <h2>Frames</h2>
+  {{if .Frames}}
+  <div id="frame-list" class="card-grid">
+    {{range .Frames}}
+    <article class="frame-card">
+      <header>
+        <strong>{{if .Name}}{{.Name}}{{else}}Frame {{.ID}}{{end}}</strong>
+        {{if .Generating}}<span class="badge generating">Generating...</span>{{end}}
+      </header>
+      <dl>
+        <dt>Hardware</dt>
+        <dd>{{if .HardwareType}}{{.HardwareType}}{{else}}Unknown{{end}}</dd>
+        <dt>Battery</dt>
+        <dd>
+          {{with .BatteryPct}}
+          {{/* deref is a custom template func: func(p *float64) float64 { return *p } */}}
+          <span class="battery-indicator {{if gt (deref .) 50.0}}battery-good{{else if gt (deref .) 20.0}}battery-warn{{else}}battery-low{{end}}">
+            {{printf "%.0f" (deref .)}}%
+          </span>
+          {{else}}
+          <span class="secondary">Unknown</span>
+          {{end}}
+        </dd>
+        <dt>Last Seen</dt>
+        <dd>{{if .LastSeenAt}}{{.LastSeenAt.Format "Jan 2, 3:04 PM"}}{{else}}<span class="secondary">Never</span>{{end}}</dd>
+      </dl>
+      <footer>
+        <button
+          hx-post="/dashboard/regenerate"
+          hx-vals='{"frame_id": "{{.ID}}"}'
+          hx-target="#frame-list"
+          hx-swap="outerHTML"
+          {{if .Generating}}disabled aria-busy="true"{{end}}>
+          Force Regenerate
+        </button>
+      </footer>
+    </article>
+    {{end}}
+  </div>
+  {{else}}
+  <p>No frames paired yet. <a href="/frames">Pair a frame</a> to get started.</p>
+  {{end}}
+</section>
+{{end}}

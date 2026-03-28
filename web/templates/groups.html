@@ -1,0 +1,134 @@
+{{define "title"}}Groups - Petcast{{end}}
+
+{{define "content"}}
+<hgroup>
+  <h1>Groups</h1>
+  <p>Control which combinations of pets appear together and how often.</p>
+</hgroup>
+
+<div id="group-list">
+  {{range .Groups}}
+  <article class="group-card" id="group-{{.ID}}">
+    <header>
+      <strong>{{.Name}}</strong>
+      <small class="secondary">Weight: {{printf "%.1f" .Weight}}</small>
+    </header>
+    <div class="pet-tags">
+      {{range .PetNames}}
+      <span class="pet-tag">{{.}}</span>
+      {{else}}
+      <span class="secondary"><small>No pets</small></span>
+      {{end}}
+    </div>
+    <footer>
+      <button class="secondary outline"
+        data-group-id="{{.ID}}"
+        data-group-name="{{.Name}}"
+        data-group-pet-ids="{{.PetIDs}}"
+        data-group-weight="{{.Weight}}"
+        onclick="openEditGroup(this.dataset.groupId, this.dataset.groupName, this.dataset.groupPetIds, this.dataset.groupWeight)">Edit</button>
+      <button class="contrast outline"
+        hx-delete="/groups/{{.ID}}"
+        hx-target="#group-list"
+        hx-swap="outerHTML"
+        hx-confirm="Delete group {{.Name}}?">
+        Delete
+      </button>
+    </footer>
+  </article>
+  {{else}}
+  <p class="secondary">No groups yet. Add one below.</p>
+  {{end}}
+</div>
+
+<section>
+  <h2>Add a Group</h2>
+  <form
+    hx-post="/groups"
+    hx-target="#group-list"
+    hx-swap="outerHTML"
+    hx-on::after-request="this.reset()">
+    <label>
+      Group Name
+      <input type="text" name="name" placeholder="e.g. Everyone" required>
+    </label>
+    <fieldset>
+      <legend>Pets</legend>
+      {{range .Pets}}
+      <label>
+        <input type="checkbox" name="pet_ids" value="{{.ID}}">
+        {{.Name}}
+      </label>
+      {{else}}
+      <p class="secondary"><a href="/pets">Add pets first</a> before creating groups.</p>
+      {{end}}
+    </fieldset>
+    <label>
+      Weight
+      <input type="range" name="weight" min="0.1" max="5.0" step="0.1" value="1.0" id="add-weight-range" oninput="document.getElementById('add-weight-display').textContent = this.value">
+      <small>Selection weight: <span id="add-weight-display">1.0</span></small>
+    </label>
+    <button type="submit">Add Group</button>
+  </form>
+</section>
+
+<dialog id="edit-group-dialog">
+  <article>
+    <header>
+      <button rel="prev" onclick="document.getElementById('edit-group-dialog').close()" aria-label="Close"></button>
+      <h3>Edit Group</h3>
+    </header>
+    <form
+      id="edit-group-form"
+      hx-target="#group-list"
+      hx-swap="outerHTML"
+      hx-on::after-request="document.getElementById('edit-group-dialog').close()">
+      <label>
+        Group Name
+        <input type="text" id="edit-group-name" name="name" required>
+      </label>
+      <fieldset>
+        <legend>Pets</legend>
+        {{range .Pets}}
+        <label>
+          <input type="checkbox" class="edit-group-pet" name="pet_ids" value="{{.ID}}" data-pet-id="{{.ID}}">
+          {{.Name}}
+        </label>
+        {{end}}
+      </fieldset>
+      <label>
+        Weight
+        <input type="range" name="weight" min="0.1" max="5.0" step="0.1" value="1.0" id="edit-weight-range" oninput="document.getElementById('edit-weight-display').textContent = this.value">
+        <small>Selection weight: <span id="edit-weight-display">1.0</span></small>
+      </label>
+      <footer>
+        <button type="button" class="secondary" onclick="document.getElementById('edit-group-dialog').close()">Cancel</button>
+        <button type="submit">Save</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+
+<script>
+function openEditGroup(id, name, petIDsJSON, weight) {
+  var form = document.getElementById('edit-group-form');
+  form.setAttribute('hx-put', '/groups/' + id);
+  htmx.process(form);
+
+  document.getElementById('edit-group-name').value = name;
+
+  var petIDs = [];
+  try { petIDs = JSON.parse(petIDsJSON); } catch(e) {}
+
+  document.querySelectorAll('.edit-group-pet').forEach(function(cb) {
+    cb.checked = petIDs.indexOf(cb.dataset.petId) !== -1;
+  });
+
+  var w = parseFloat(weight) || 1.0;
+  document.getElementById('edit-weight-range').value = w;
+  document.getElementById('edit-weight-display').textContent = w.toFixed(1);
+
+  document.getElementById('edit-group-dialog').showModal();
+}
+</script>
+{{end}}
