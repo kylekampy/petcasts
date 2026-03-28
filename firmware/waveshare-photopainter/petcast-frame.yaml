@@ -1,0 +1,340 @@
+# Petcast ESPHome config for Waveshare ESP32-S3-PhotoPainter
+#
+# Hardware: ESP32-S3-WROOM-1-N16R8, 7.3" Spectra 6 e-ink, AXP2101 PMU
+#
+# Boot-driven flow:
+#   1. Wake from deep sleep (timer or BOOT button)
+#   2. Initialize AXP2101 PMU (powers the display)
+#   3. Wait for WiFi + NTP time sync
+#   4. POST /api/v1/frame/{id}/generate (202=started, 429=already done)
+#   5. If 202: wait 2 min for generation, then GET /image
+#   6. If 429: GET /image immediately
+#   7. Display image, deep sleep until 5:00 AM
+#
+# Buttons:
+#   BOOT (GPIO0): wake from deep sleep, normal boot flow
+#   KEY  (GPIO4): force regeneration
+
+substitutions:
+  # Set these after pairing with the server:
+  #   curl -X POST http://YOUR_SERVER:7777/api/v1/pair \
+  #     -H 'Content-Type: application/json' \
+  #     -d '{"code":"YOUR_CODE","hardware_type":"waveshare","display_w":800,"display_h":480}'
+  server_url: "http://YOUR_SERVER:7777"
+  frame_id: "YOUR_FRAME_ID"
+  frame_token: "YOUR_FRAME_TOKEN"
+
+esphome:
+  name: petcast-frame
+  friendly_name: Petcast Frame
+  on_boot:
+    priority: -100
+    then:
+      - output.turn_on: green_led
+      - lambda: 'id(boot_count) += 1;'
+      - logger.log: "Device booted, initializing PMU..."
+      - script.execute: init_pmu
+      - script.execute: sleep_watchdog
+      - script.execute: update_battery_status
+      # Wait for WiFi
+      - logger.log: "Waiting for WiFi..."
+      - wait_until:
+          condition:
+            wifi.connected:
+          timeout: 30s
+      # Wait for NTP time sync
+      - logger.log: "Waiting for NTP time sync..."
+      - wait_until:
+          condition:
+            time.has_time:
+              id: sntp_time
+          timeout: 30s
+      - logger.log:
+          format: "Time synced: %02d:%02d"
+          args: ["id(sntp_time).now().hour", "id(sntp_time).now().minute"]
+      # Trigger generation and display
+      - script.execute: trigger_and_display
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  on_connect:
+    then:
+      - logger.log: "WiFi connected"
+  ap:
+    ssid: "Petcast-Frame Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: "America/Chicago"
+
+i2c:
+  sda: GPIO47
+  scl: GPIO48
+  scan: false
+
+globals:
+  - id: generation_accepted
+    type: bool
+    restore_value: false
+    initial_value: "false"
+  - id: boot_count
+    type: int
+    restore_value: true
+    initial_value: "0"
+  - id: battery_pct
+    type: float
+    restore_value: false
+    initial_value: "100.0"
+
+spi:
+  clk_pin: GPIO10
+  mosi_pin: GPIO11
+
+display:
+  - platform: epaper_spi
+    id: epaper_display
+    model: 7.3in-Spectra-E6
+    cs_pin: GPIO9
+    dc_pin:
+      number: GPIO8
+      inverted: false
+    reset_pin: GPIO12
+    busy_pin:
+      number: GPIO13
+      inverted: true
+    rotation: 180
+    update_interval: never
+    lambda: |-
+      it.image(0, 0, id(frame_image));
+
+http_request:
+  verify_ssl: false
+  timeout: 20s
+  watchdog_timeout: 25s
+
+online_image:
+  - id: frame_image
+    format: PNG
+    type: RGB
+    buffer_size: 65536
+    url: !lambda |-
+      return "${server_url}/api/v1/frame/${frame_id}/image?battery=" + to_string((int)id(battery_pct));
+    on_download_finished:
+      - logger.log: "Image downloaded, updating display"
+      - component.update: epaper_display
+      - logger.log: "Display refreshing, sleeping in 60s..."
+      - delay: 60s
+      - script.execute: go_to_sleep
+    on_error:
+      - logger.log: "Image download failed"
+      - delay: 60s
+      - script.execute: go_to_sleep
+
+# BOOT button wakes from deep sleep
+deep_sleep:
+  id: deep_sleep_ctrl
+  wakeup_pin:
+    number: GPIO0
+    inverted: true
+
+binary_sensor:
+  # KEY button = force regeneration
+  - platform: gpio
+    pin:
+      number: GPIO4
+      mode: INPUT_PULLUP
+    name: "Force Regenerate Button"
+    filters:
+      - delayed_on: 50ms
+    on_press:
+      then:
+        - logger.log: "Force regenerate button pressed"
+        - script.execute: force_regenerate
+
+script:
+  - id: init_pmu
+    mode: single
+    then:
+      # Initialize AXP2101 PMU via I2C to enable display power rails.
+      # The display won't respond until the PMU sets up the correct voltages.
+      # Register map: https://github.com/lewisxhe/XPowersLib
+      - lambda: |-
+          // AXP2101 I2C address
+          const uint8_t AXP_ADDR = 0x34;
+          auto bus = App.get_components<i2c::I2CComponent>()[0];
+
+          auto write_reg = [&](uint8_t reg, uint8_t val) {
+            uint8_t data[2] = {reg, val};
+            bus->get_bus()->write(AXP_ADDR, data, 2);
+          };
+
+          // Enable DC-DC1 at 3.3V (main rail)
+          write_reg(0x82, 0x14);  // DC1 voltage = 3300mV
+          // Enable ALDO3 at 3.3V (display power)
+          write_reg(0x96, 0x1C);  // ALDO3 voltage = 3300mV
+          // Enable BLDO1 at 3.3V
+          write_reg(0x97, 0x1C);  // BLDO1 voltage = 3300mV
+
+          // Enable power outputs
+          write_reg(0x90, 0x07);  // Enable ALDO1-3
+          write_reg(0x91, 0x01);  // Enable BLDO1
+
+          ESP_LOGI("pmu", "AXP2101 initialized");
+          delay(100);  // Let rails stabilize
+
+  - id: trigger_and_display
+    mode: single
+    then:
+      - lambda: 'id(generation_accepted) = false;'
+      - logger.log: "Triggering generation..."
+      - http_request.post:
+          url: !lambda |-
+            return "${server_url}/api/v1/frame/${frame_id}/generate";
+          headers:
+            Content-Type: application/json
+            Authorization: !lambda |-
+              return "Bearer ${frame_token}";
+          body: !lambda |-
+            char buf[64];
+            snprintf(buf, sizeof(buf), "{\"battery\": %.0f}", id(battery_pct));
+            return buf;
+          on_response:
+            - lambda: |-
+                if (response->status_code == 202) {
+                  id(generation_accepted) = true;
+                  ESP_LOGI("petcast", "Generation accepted (202)");
+                } else if (response->status_code == 429) {
+                  ESP_LOGI("petcast", "Already generated today (429)");
+                } else {
+                  ESP_LOGW("petcast", "Unexpected response (%d)", response->status_code);
+                }
+          on_error:
+            - lambda: 'id(generation_accepted) = false;'
+            - logger.log: "Generate request failed (network/timeout)"
+      - if:
+          condition:
+            lambda: 'return id(generation_accepted);'
+          then:
+            - logger.log: "Generation started, waiting 2 min..."
+            - delay: 120s
+          else:
+            - logger.log: "Skipping wait, fetching image"
+      # Fetch and display — on_download_finished handles display refresh and sleep
+      - logger.log: "Fetching image..."
+      - component.update: frame_image
+
+  - id: force_regenerate
+    mode: single
+    then:
+      - lambda: 'id(generation_accepted) = false;'
+      - http_request.post:
+          url: !lambda |-
+            return "${server_url}/api/v1/frame/${frame_id}/generate";
+          headers:
+            Content-Type: application/json
+            Authorization: !lambda |-
+              return "Bearer ${frame_token}";
+          body: !lambda |-
+            char buf[64];
+            snprintf(buf, sizeof(buf), "{\"battery\": %.0f, \"force\": true}", id(battery_pct));
+            return buf;
+          on_response:
+            - lambda: |-
+                if (response->status_code == 202) {
+                  id(generation_accepted) = true;
+                  ESP_LOGI("petcast", "Force generation accepted (202)");
+                } else {
+                  ESP_LOGW("petcast", "Force generation failed (%d)", response->status_code);
+                }
+          on_error:
+            - logger.log: "Force generate request failed"
+      - if:
+          condition:
+            lambda: 'return id(generation_accepted);'
+          then:
+            - logger.log: "Force generation triggered, waiting 2 min..."
+            - delay: 120s
+      - logger.log: "Fetching image..."
+      - component.update: frame_image
+
+  - id: go_to_sleep
+    mode: single
+    then:
+      - logger.log: "Going to sleep until 5:00 AM"
+      - output.turn_off: green_led
+      - deep_sleep.enter:
+          id: deep_sleep_ctrl
+          time_id: sntp_time
+          until: "05:00:00"
+
+  - id: sleep_watchdog
+    mode: single
+    then:
+      - delay: 600s
+      - logger.log: "Watchdog: 10 min awake, forcing sleep"
+      - script.execute: go_to_sleep
+
+  - id: update_battery_status
+    mode: single
+    then:
+      # Read battery percentage from AXP2101 register 0xA4
+      - lambda: |-
+          const uint8_t AXP_ADDR = 0x34;
+          const uint8_t REG_BAT_PCT = 0xA4;
+          auto bus = App.get_components<i2c::I2CComponent>()[0];
+
+          uint8_t reg = REG_BAT_PCT;
+          uint8_t pct = 0;
+          bus->get_bus()->write(AXP_ADDR, &reg, 1);
+          bus->get_bus()->read(AXP_ADDR, &pct, 1);
+
+          id(battery_pct) = (float)(pct & 0x7F);  // Bit 7 is validity flag
+          ESP_LOGI("battery", "Battery: %.0f%%", id(battery_pct));
+
+output:
+  - platform: gpio
+    pin:
+      number: GPIO42
+      inverted: true
+    id: green_led
+  - platform: gpio
+    pin:
+      number: GPIO45
+      inverted: true
+    id: red_led
+
+sensor:
+  - platform: template
+    name: "Boot Count"
+    id: boot_count_sensor
+    lambda: 'return id(boot_count);'
+    update_interval: never
+    accuracy_decimals: 0
+  - platform: template
+    name: "Battery Level"
+    id: battery_level_sensor
+    unit_of_measurement: "%"
+    icon: "mdi:battery"
+    device_class: battery
+    lambda: 'return id(battery_pct);'
+    update_interval: never
