@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Petcast Server",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/petcast",
+      "args": ["-data", "${workspaceFolder}", "-port", "7777"],
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "GOOGLE_CLIENT_ID": "",
+        "GOOGLE_CLIENT_SECRET": ""
+      }
+    },
+    {
+      "name": "Petcast Server (Dev Mode)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/petcast",
+      "args": ["-data", "${workspaceFolder}", "-port", "7777", "-dev"],
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}

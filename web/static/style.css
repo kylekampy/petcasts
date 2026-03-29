@@ -297,3 +297,67 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* --- Setup wizard --- */
+
+.setup-wizard {
+  padding: 0;
+}
+
+.setup-step {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  align-items: flex-start;
+}
+
+.setup-step + .setup-step {
+  border-top: 1px solid var(--pico-muted-border-color);
+}
+
+.step-number {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--pico-primary-background);
+  color: var(--pico-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.step-content h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.step-content p {
+  margin-bottom: 0.75rem;
+}
+
+/* --- Claim code input --- */
+
+.claim-form {
+  max-width: 400px;
+}
+
+.claim-code-input {
+  font-size: 1.5rem;
+  text-align: center;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-family: monospace;
+}
+
+.claim-error {
+  border-left: 4px solid var(--pico-del-color);
+  padding: 0.75rem 1rem;
+}
+
+.claim-error p {
+  margin: 0;
+  color: var(--pico-del-color);
+}

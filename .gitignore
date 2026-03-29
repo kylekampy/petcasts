@@ -17,3 +17,4 @@ esphome/secrets.yaml
 *.db-wal
 generations/
 output/test_pattern.png
+cmd/petcast/__debug_bin*

@@ -27,14 +27,26 @@ import (
 
 func main() {
 	var (
-		port     int
-		dataDir  string
-		pairCode string
+		port      int
+		dataDir   string
+		pairCode  string
+		serverURL string
+		devMode   bool
 	)
 	flag.IntVar(&port, "port", 7777, "HTTP server port")
 	flag.StringVar(&dataDir, "data", ".", "Data directory (contains config.yaml, pets/)")
 	flag.StringVar(&pairCode, "pairing-code", "", "Frame pairing code (auto-generated if empty)")
+	flag.StringVar(&serverURL, "server-url", "", "External server URL (e.g., https://petcast.app)")
+	flag.BoolVar(&devMode, "dev", false, "Dev mode: auto-create user and skip OAuth")
 	flag.Parse()
+
+	// Server URL: flag > env > default
+	if serverURL == "" {
+		serverURL = os.Getenv("PETCAST_SERVER_URL")
+	}
+	if serverURL == "" {
+		serverURL = fmt.Sprintf("http://localhost:%d", port)
+	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
@@ -105,6 +117,17 @@ func main() {
 		logger.Warn("Google OAuth disabled (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set)")
 	}
 
+	// Dev mode: create a dev user and enable auto-login
+	if devMode {
+		devUser, err := database.UpsertUserByGoogle("dev-mode", "dev@petcast.local", "Dev User", "")
+		if err != nil {
+			logger.Error("failed to create dev user", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("dev mode enabled", "user_id", devUser.ID, "email", devUser.Email)
+		sessions.SetDevUser(devUser.ID)
+	}
+
 	// Web dashboard
 	templateDir := filepath.Join(dataDir, "web", "templates")
 	webApp, err := web.New(cfg, database, store, sessions, googleAuth, pairCode,
@@ -116,6 +139,7 @@ func main() {
 
 	// Server (frame API + web dashboard)
 	srv := server.New(cfg, database, store, pipe, pairCode, logger.With("component", "server"))
+	srv.ServerURL = serverURL
 	srv.SetWeb(webApp)
 
 	addr := fmt.Sprintf(":%d", port)

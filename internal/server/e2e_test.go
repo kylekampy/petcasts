@@ -406,6 +406,153 @@ func TestE2E_StatusReflectsGenerating(t *testing.T) {
 	srv.mu.Unlock()
 }
 
+// TestE2E_ProvisioningFlow exercises the full claim-based provisioning:
+// frame registers → polls (pending) → user claims → polls (credentials) → uses credentials
+func TestE2E_ProvisioningFlow(t *testing.T) {
+	srv, _ := setupE2EServer(t)
+	srv.ServerURL = "http://localhost:7777"
+	handler := srv.Handler()
+
+	// Create a user to claim the frame
+	user, _ := srv.DB.UpsertUserByGoogle("google-prov", "prov@test.com", "Prov User", "")
+
+	// Step 1: Frame registers itself
+	regBody := `{"mac":"AA:BB:CC:DD:EE:FF","claim_code":"DOVE-1234","hardware_type":"waveshare","display_w":800,"display_h":480}`
+	regReq := httptest.NewRequest("POST", "/api/v1/register", bytes.NewBufferString(regBody))
+	regW := httptest.NewRecorder()
+	handler.ServeHTTP(regW, regReq)
+
+	if regW.Code != http.StatusOK {
+		t.Fatalf("register: status %d, body: %s", regW.Code, regW.Body.String())
+	}
+
+	// Step 2: Frame polls — still pending
+	provReq := httptest.NewRequest("GET", "/api/v1/provision/AA:BB:CC:DD:EE:FF", nil)
+	provW := httptest.NewRecorder()
+	handler.ServeHTTP(provW, provReq)
+
+	if provW.Code != http.StatusOK {
+		t.Fatalf("provision (pending): status %d", provW.Code)
+	}
+	var provResp map[string]any
+	json.Unmarshal(provW.Body.Bytes(), &provResp)
+	if provResp["status"] != "pending" {
+		t.Errorf("provision status = %v, want pending", provResp["status"])
+	}
+
+	// Step 3: User claims the frame via DB (simulating web claim)
+	_, _, err := srv.DB.ClaimFrame("AA:BB:CC:DD:EE:FF", user.ID)
+	if err != nil {
+		t.Fatalf("ClaimFrame: %v", err)
+	}
+
+	// Step 4: Frame polls again — gets credentials
+	provReq2 := httptest.NewRequest("GET", "/api/v1/provision/AA:BB:CC:DD:EE:FF", nil)
+	provW2 := httptest.NewRecorder()
+	handler.ServeHTTP(provW2, provReq2)
+
+	var provResp2 map[string]any
+	json.Unmarshal(provW2.Body.Bytes(), &provResp2)
+	if provResp2["status"] != "claimed" {
+		t.Fatalf("provision status = %v, want claimed", provResp2["status"])
+	}
+
+	frameID := provResp2["frame_id"].(string)
+	apiToken := provResp2["api_token"].(string)
+	serverURL := provResp2["server_url"].(string)
+
+	if frameID == "" {
+		t.Error("frame_id is empty")
+	}
+	if apiToken == "" {
+		t.Error("api_token is empty")
+	}
+	if serverURL != "http://localhost:7777" {
+		t.Errorf("server_url = %q, want http://localhost:7777", serverURL)
+	}
+
+	// Step 5: Frame uses the credentials to trigger generation
+	genReq := httptest.NewRequest("POST", "/api/v1/frame/"+frameID+"/generate",
+		bytes.NewBufferString(`{"battery":75}`))
+	genReq.Header.Set("Authorization", "Bearer "+apiToken)
+	genW := httptest.NewRecorder()
+	handler.ServeHTTP(genW, genReq)
+
+	// Should get 202 (generation started) — pipeline is real in e2e
+	if genW.Code != http.StatusAccepted {
+		t.Fatalf("generate with provisioned creds: status %d, body: %s", genW.Code, genW.Body.String())
+	}
+
+	// Wait for generation to complete
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		srv.mu.Lock()
+		generating := srv.generating[frameID]
+		srv.mu.Unlock()
+		if !generating {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("generation did not complete within 30s")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	// Step 6: Frame fetches the image
+	imgReq := httptest.NewRequest("GET", "/api/v1/frame/"+frameID+"/image", nil)
+	imgReq.Header.Set("Authorization", "Bearer "+apiToken)
+	imgW := httptest.NewRecorder()
+	handler.ServeHTTP(imgW, imgReq)
+
+	if imgW.Code != http.StatusOK {
+		t.Fatalf("image with provisioned creds: status %d, body: %s", imgW.Code, imgW.Body.String())
+	}
+	if imgW.Header().Get("Content-Type") != "image/png" {
+		t.Errorf("Content-Type = %q, want image/png", imgW.Header().Get("Content-Type"))
+	}
+
+	t.Logf("provisioning flow complete: frame_id=%s, image=%d bytes", frameID, imgW.Body.Len())
+}
+
+func TestRegister_InvalidRequest(t *testing.T) {
+	srv, _ := setupE2EServer(t)
+	handler := srv.Handler()
+
+	// Missing MAC
+	req := httptest.NewRequest("POST", "/api/v1/register", bytes.NewBufferString(`{"claim_code":"HAWK-1111"}`))
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("missing MAC: status %d, want 400", w.Code)
+	}
+
+	// Missing claim code
+	req = httptest.NewRequest("POST", "/api/v1/register", bytes.NewBufferString(`{"mac":"AA:BB:CC:DD:EE:FF"}`))
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("missing code: status %d, want 400", w.Code)
+	}
+}
+
+func TestProvision_UnknownMAC(t *testing.T) {
+	srv, _ := setupE2EServer(t)
+	handler := srv.Handler()
+
+	req := httptest.NewRequest("GET", "/api/v1/provision/00:00:00:00:00:00", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("unknown MAC: status %d, want 200", w.Code)
+	}
+	var resp map[string]any
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp["status"] != "pending" {
+		t.Errorf("unknown MAC status = %v, want pending", resp["status"])
+	}
+}
+
 // --- e2e helpers ---
 
 func e2ePair(t *testing.T, handler http.Handler) (string, string) {

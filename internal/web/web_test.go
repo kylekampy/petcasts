@@ -399,8 +399,113 @@ func TestFrames_Page(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("frames: status %d", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "TEST-CODE") {
-		t.Error("frames page should show pairing code")
+	if !strings.Contains(rr.Body.String(), "Set Up a New Frame") {
+		t.Error("frames page should show setup wizard")
+	}
+}
+
+func TestClaimPage_Renders(t *testing.T) {
+	w, database, user := setupTestWeb(t)
+	mux := http.NewServeMux()
+	w.RegisterRoutes(mux)
+
+	req := authenticatedRequest(t, database, user.ID, "GET", "/frames/claim")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("claim page: status %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "Claim Your Frame") {
+		t.Error("claim page should contain 'Claim Your Frame'")
+	}
+}
+
+func TestClaimFrame_Success(t *testing.T) {
+	w, database, user := setupTestWeb(t)
+	mux := http.NewServeMux()
+	w.RegisterRoutes(mux)
+
+	// Register a pending frame
+	database.RegisterPendingFrame("AA:BB:CC:DD:EE:FF", "DOVE-5678", "waveshare", 800, 480)
+
+	// Submit claim
+	form := url.Values{"claim_code": {"DOVE-5678"}}
+	req := authenticatedFormRequest(t, database, user.ID, "/frames/claim", form)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusFound {
+		t.Fatalf("claim: status %d, body: %s", rr.Code, rr.Body.String())
+	}
+	if loc := rr.Header().Get("Location"); loc != "/frames" {
+		t.Errorf("redirect to %q, want /frames", loc)
+	}
+
+	// Verify frame is in user's frames
+	frames, _ := database.ListUserFrames(user.ID)
+	if len(frames) != 1 {
+		t.Fatalf("user frame count = %d, want 1", len(frames))
+	}
+}
+
+func TestClaimFrame_InvalidCode(t *testing.T) {
+	w, database, user := setupTestWeb(t)
+	mux := http.NewServeMux()
+	w.RegisterRoutes(mux)
+
+	form := url.Values{"claim_code": {"NOPE-0000"}}
+	req := authenticatedFormRequest(t, database, user.ID, "/frames/claim", form)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("invalid claim: status %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "No frame found") {
+		t.Error("should show error for invalid code")
+	}
+}
+
+func TestClaimFrame_EmptyCode(t *testing.T) {
+	w, database, user := setupTestWeb(t)
+	mux := http.NewServeMux()
+	w.RegisterRoutes(mux)
+
+	form := url.Values{"claim_code": {""}}
+	req := authenticatedFormRequest(t, database, user.ID, "/frames/claim", form)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("empty claim: status %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "Please enter") {
+		t.Error("should show error for empty code")
+	}
+}
+
+func TestFramesPage_ShowsSetupWizard(t *testing.T) {
+	w, database, user := setupTestWeb(t)
+	mux := http.NewServeMux()
+	w.RegisterRoutes(mux)
+
+	req := authenticatedRequest(t, database, user.ID, "GET", "/frames")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("frames: status %d", rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "Set Up a New Frame") {
+		t.Error("frames page should contain setup wizard")
+	}
+	if !strings.Contains(body, "esp-web-install-button") {
+		t.Error("frames page should contain ESP Web Tools button")
+	}
+	if !strings.Contains(body, "Enter Claim Code") {
+		t.Error("frames page should link to claim page")
 	}
 }
 

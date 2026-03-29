@@ -1,0 +1,25 @@
+{{define "title"}}Claim Your Frame - Petcast{{end}}
+
+{{define "content"}}
+<h1>Claim Your Frame</h1>
+<p>Enter the setup code displayed on your frame's screen.</p>
+
+{{if .Error}}
+<article class="claim-error" aria-label="Error">
+  <p>{{.Error}}</p>
+</article>
+{{end}}
+
+<form method="POST" action="/frames/claim" class="claim-form">
+  <label for="claim_code">Setup Code</label>
+  <input type="text" id="claim_code" name="claim_code"
+    placeholder="WREN-4827"
+    pattern="[A-Za-z]{4}-[0-9]{4}"
+    autocomplete="off"
+    autofocus
+    required
+    class="claim-code-input">
+  <small>The code looks like WORD-1234 and is shown on your frame's e-ink display.</small>
+  <button type="submit">Claim Frame</button>
+</form>
+{{end}}

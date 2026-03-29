@@ -21,12 +21,23 @@ const userContextKey contextKey = 0
 
 // SessionManager handles session creation, lookup, and cookie management.
 type SessionManager struct {
-	db *db.DB
+	db        *db.DB
+	devUserID string // if set, auto-login as this user on /login
 }
 
 // NewSessionManager creates a SessionManager backed by the given DB.
 func NewSessionManager(database *db.DB) *SessionManager {
 	return &SessionManager{db: database}
+}
+
+// SetDevUser enables dev mode — /login will auto-create a session for this user.
+func (s *SessionManager) SetDevUser(userID string) {
+	s.devUserID = userID
+}
+
+// DevUserID returns the dev user ID, or empty string if not in dev mode.
+func (s *SessionManager) DevUserID() string {
+	return s.devUserID
 }
 
 // CreateSession creates a session in the DB and sets a secure httpOnly cookie on the response.

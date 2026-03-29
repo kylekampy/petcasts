@@ -2,27 +2,32 @@
 #
 # Hardware: ESP32-S3-WROOM-1-N16R8, 7.3" Spectra 6 e-ink, AXP2101 PMU
 #
-# Boot-driven flow:
+# Two modes:
+#
+# PROVISIONING MODE (first boot, no stored credentials):
+#   1. Initialize PMU + display
+#   2. Connect to WiFi (from Improv Serial)
+#   3. Derive claim code from MAC address
+#   4. Display claim code on e-ink screen
+#   5. Register with server: POST /api/v1/register
+#   6. Poll GET /api/v1/provision/{mac} every 30s
+#   7. On success: store credentials in NVS, display "Connected!", reboot
+#
+# NORMAL MODE (credentials stored):
 #   1. Wake from deep sleep (timer or BOOT button)
-#   2. Initialize AXP2101 PMU (powers the display)
+#   2. Initialize PMU
 #   3. Wait for WiFi + NTP time sync
 #   4. POST /api/v1/frame/{id}/generate (202=started, 429=already done)
-#   5. If 202: wait 2 min for generation, then GET /image
+#   5. If 202: wait 2 min, then GET /image
 #   6. If 429: GET /image immediately
 #   7. Display image, deep sleep until 5:00 AM
 #
 # Buttons:
-#   BOOT (GPIO0): wake from deep sleep, normal boot flow
-#   KEY  (GPIO4): force regeneration
+#   BOOT (GPIO0): wake from deep sleep
+#   KEY  (GPIO4): force regeneration (normal mode) / factory reset (hold 10s in provisioning)
 
 substitutions:
-  # Set these after pairing with the server:
-  #   curl -X POST http://YOUR_SERVER:7777/api/v1/pair \
-  #     -H 'Content-Type: application/json' \
-  #     -d '{"code":"YOUR_CODE","hardware_type":"waveshare","display_w":800,"display_h":480}'
-  server_url: "http://YOUR_SERVER:7777"
-  frame_id: "YOUR_FRAME_ID"
-  frame_token: "YOUR_FRAME_TOKEN"
+  server_url: "https://petcast.app"
 
 esphome:
   name: petcast-frame
@@ -36,24 +41,36 @@ esphome:
       - script.execute: init_pmu
       - script.execute: sleep_watchdog
       - script.execute: update_battery_status
-      # Wait for WiFi
+      # Wait for WiFi (from Improv or NVS)
       - logger.log: "Waiting for WiFi..."
       - wait_until:
           condition:
             wifi.connected:
-          timeout: 30s
-      # Wait for NTP time sync
-      - logger.log: "Waiting for NTP time sync..."
-      - wait_until:
+          timeout: 60s
+      # Check if we have stored credentials
+      - lambda: |-
+          if (id(stored_frame_id).length() > 0 && id(stored_frame_token).length() > 0) {
+            ESP_LOGI("petcast", "Credentials found, entering normal mode");
+            id(provisioned) = true;
+          } else {
+            ESP_LOGI("petcast", "No credentials, entering provisioning mode");
+            id(provisioned) = false;
+          }
+      - if:
           condition:
-            time.has_time:
-              id: sntp_time
-          timeout: 30s
-      - logger.log:
-          format: "Time synced: %02d:%02d"
-          args: ["id(sntp_time).now().hour", "id(sntp_time).now().minute"]
-      # Trigger generation and display
-      - script.execute: trigger_and_display
+            lambda: 'return id(provisioned);'
+          then:
+            # --- NORMAL MODE ---
+            - logger.log: "Waiting for NTP..."
+            - wait_until:
+                condition:
+                  time.has_time:
+                    id: sntp_time
+                timeout: 30s
+            - script.execute: trigger_and_display
+          else:
+            # --- PROVISIONING MODE ---
+            - script.execute: provisioning_mode
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -71,14 +88,11 @@ ota:
   - platform: esphome
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  on_connect:
-    then:
-      - logger.log: "WiFi connected"
   ap:
-    ssid: "Petcast-Frame Fallback"
-    password: !secret ap_password
+    ssid: "Petcast-Frame"
+
+improv_serial:
+  next_url: "${server_url}/frames/claim?device={{device_name}}&ip={{ip_address}}"
 
 captive_portal:
 
@@ -93,6 +107,10 @@ i2c:
   scan: false
 
 globals:
+  - id: provisioned
+    type: bool
+    restore_value: false
+    initial_value: "false"
   - id: generation_accepted
     type: bool
     restore_value: false
@@ -105,6 +123,15 @@ globals:
     type: float
     restore_value: false
     initial_value: "100.0"
+  # Credentials stored in NVS (persist across reboots)
+  - id: stored_frame_id
+    type: std::string
+    restore_value: true
+    initial_value: '""'
+  - id: stored_frame_token
+    type: std::string
+    restore_value: true
+    initial_value: '""'
 
 spi:
   clk_pin: GPIO10
@@ -125,7 +152,9 @@ display:
     rotation: 180
     update_interval: never
     lambda: |-
-      it.image(0, 0, id(frame_image));
+      if (id(provisioned)) {
+        it.image(0, 0, id(frame_image));
+      }
 
 http_request:
   verify_ssl: false
@@ -138,7 +167,9 @@ online_image:
     type: RGB
     buffer_size: 65536
     url: !lambda |-
-      return "${server_url}/api/v1/frame/${frame_id}/image?battery=" + to_string((int)id(battery_pct));
+      return id(stored_frame_id).length() > 0
+        ? "${server_url}/api/v1/frame/" + id(stored_frame_id) + "/image?battery=" + to_string((int)id(battery_pct))
+        : "${server_url}/api/v1/status";
     on_download_finished:
       - logger.log: "Image downloaded, updating display"
       - component.update: epaper_display
@@ -168,40 +199,147 @@ binary_sensor:
       - delayed_on: 50ms
     on_press:
       then:
-        - logger.log: "Force regenerate button pressed"
-        - script.execute: force_regenerate
+        - if:
+            condition:
+              lambda: 'return id(provisioned);'
+            then:
+              - logger.log: "Force regenerate button pressed"
+              - script.execute: force_regenerate
 
 script:
   - id: init_pmu
     mode: single
     then:
-      # Initialize AXP2101 PMU via I2C to enable display power rails.
-      # The display won't respond until the PMU sets up the correct voltages.
-      # Register map: https://github.com/lewisxhe/XPowersLib
       - lambda: |-
-          // AXP2101 I2C address
           const uint8_t AXP_ADDR = 0x34;
           auto bus = App.get_components<i2c::I2CComponent>()[0];
-
           auto write_reg = [&](uint8_t reg, uint8_t val) {
             uint8_t data[2] = {reg, val};
             bus->get_bus()->write(AXP_ADDR, data, 2);
           };
-
-          // Enable DC-DC1 at 3.3V (main rail)
-          write_reg(0x82, 0x14);  // DC1 voltage = 3300mV
-          // Enable ALDO3 at 3.3V (display power)
-          write_reg(0x96, 0x1C);  // ALDO3 voltage = 3300mV
-          // Enable BLDO1 at 3.3V
-          write_reg(0x97, 0x1C);  // BLDO1 voltage = 3300mV
-
-          // Enable power outputs
+          write_reg(0x82, 0x14);  // DC1 3300mV
+          write_reg(0x96, 0x1C);  // ALDO3 3300mV
+          write_reg(0x97, 0x1C);  // BLDO1 3300mV
           write_reg(0x90, 0x07);  // Enable ALDO1-3
           write_reg(0x91, 0x01);  // Enable BLDO1
-
           ESP_LOGI("pmu", "AXP2101 initialized");
-          delay(100);  // Let rails stabilize
+          delay(100);
 
+  # --- PROVISIONING MODE ---
+  - id: provisioning_mode
+    mode: single
+    then:
+      - logger.log: "Entering provisioning mode..."
+      # Derive claim code from MAC address
+      - lambda: |-
+          uint8_t mac[6];
+          esp_read_mac(mac, ESP_MAC_WIFI_STA);
+          uint32_t hash = 0;
+          for (int i = 0; i < 6; i++) hash = hash * 31 + mac[i];
+
+          const char* words[] = {
+            "WREN", "BEAR", "FAWN", "HAWK", "LARK", "PINE",
+            "SAGE", "DOVE", "FERN", "LUNA", "REED", "VALE",
+            "MOSS", "COVE", "DUSK", "PEAK"
+          };
+          int word_idx = (hash >> 16) % 16;
+          int number = hash % 10000;
+
+          char code[16];
+          snprintf(code, sizeof(code), "%s-%04d", words[word_idx], number);
+          id(claim_code_str) = code;
+
+          char mac_str[18];
+          snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
+            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+          id(mac_addr_str) = mac_str;
+
+          ESP_LOGI("petcast", "Claim code: %s (MAC: %s)", code, mac_str);
+
+      # Display claim code on e-ink
+      - lambda: |-
+          auto display = id(epaper_display);
+          display->fill(Color::WHITE);
+          display->printf(400, 120, id(title_font), Color::BLACK, TextAlign::CENTER, "Welcome to Petcast!");
+          display->printf(400, 200, id(body_font), Color::BLACK, TextAlign::CENTER, "Your setup code:");
+          display->printf(400, 280, id(code_font), Color::BLACK, TextAlign::CENTER, "%s", id(claim_code_str).c_str());
+          display->printf(400, 380, id(small_font), Color::BLACK, TextAlign::CENTER, "Enter this code at petcast.app/frames/claim");
+          display->do_update();
+
+      # Register with server
+      - http_request.post:
+          url: "${server_url}/api/v1/register"
+          headers:
+            Content-Type: application/json
+          body: !lambda |-
+            char buf[256];
+            snprintf(buf, sizeof(buf),
+              "{\"mac\":\"%s\",\"claim_code\":\"%s\",\"hardware_type\":\"waveshare-photopainter\",\"display_w\":800,\"display_h\":480}",
+              id(mac_addr_str).c_str(), id(claim_code_str).c_str());
+            return buf;
+          on_response:
+            - logger.log:
+                format: "Register response: %d"
+                args: ["response->status_code"]
+          on_error:
+            - logger.log: "Register request failed"
+
+      # Poll for credentials every 30 seconds
+      - while:
+          condition:
+            lambda: 'return !id(provisioned);'
+          then:
+            - delay: 30s
+            - script.execute: poll_provision
+
+  - id: poll_provision
+    mode: single
+    then:
+      - http_request.get:
+          url: !lambda |-
+            return "${server_url}/api/v1/provision/" + id(mac_addr_str);
+          on_response:
+            - lambda: |-
+                if (response->status_code == 200) {
+                  // Parse JSON response for credentials
+                  // ESPHome's http_request returns body in a callback
+                  std::string body = id(http_response_body);
+                  if (body.find("\"claimed\"") != std::string::npos) {
+                    // Extract frame_id and api_token from JSON
+                    // Simple parsing for {"status":"claimed","frame_id":"...","api_token":"..."}
+                    auto extract = [&](const std::string &key) -> std::string {
+                      auto pos = body.find("\"" + key + "\":\"");
+                      if (pos == std::string::npos) return "";
+                      pos += key.length() + 4;
+                      auto end = body.find("\"", pos);
+                      if (end == std::string::npos) return "";
+                      return body.substr(pos, end - pos);
+                    };
+                    std::string fid = extract("frame_id");
+                    std::string tok = extract("api_token");
+                    if (!fid.empty() && !tok.empty()) {
+                      id(stored_frame_id) = fid;
+                      id(stored_frame_token) = tok;
+                      id(provisioned) = true;
+                      ESP_LOGI("petcast", "Provisioned! frame_id=%s", fid.c_str());
+
+                      // Display success message
+                      auto display = id(epaper_display);
+                      display->fill(Color::WHITE);
+                      display->printf(400, 200, id(title_font), Color::BLACK, TextAlign::CENTER, "Connected!");
+                      display->printf(400, 300, id(body_font), Color::BLACK, TextAlign::CENTER, "Your frame will update daily at 5 AM.");
+                      display->do_update();
+
+                      // Wait for display refresh then reboot into normal mode
+                      delay(30000);
+                      App.safe_reboot();
+                    }
+                  }
+                }
+          on_error:
+            - logger.log: "Provision poll failed"
+
+  # --- NORMAL MODE SCRIPTS ---
   - id: trigger_and_display
     mode: single
     then:
@@ -209,11 +347,11 @@ script:
       - logger.log: "Triggering generation..."
       - http_request.post:
           url: !lambda |-
-            return "${server_url}/api/v1/frame/${frame_id}/generate";
+            return "${server_url}/api/v1/frame/" + id(stored_frame_id) + "/generate";
           headers:
             Content-Type: application/json
             Authorization: !lambda |-
-              return "Bearer ${frame_token}";
+              return "Bearer " + id(stored_frame_token);
           body: !lambda |-
             char buf[64];
             snprintf(buf, sizeof(buf), "{\"battery\": %.0f}", id(battery_pct));
@@ -223,14 +361,11 @@ script:
                 if (response->status_code == 202) {
                   id(generation_accepted) = true;
                   ESP_LOGI("petcast", "Generation accepted (202)");
-                } else if (response->status_code == 429) {
-                  ESP_LOGI("petcast", "Already generated today (429)");
                 } else {
-                  ESP_LOGW("petcast", "Unexpected response (%d)", response->status_code);
+                  ESP_LOGI("petcast", "Generation skipped (%d)", response->status_code);
                 }
           on_error:
-            - lambda: 'id(generation_accepted) = false;'
-            - logger.log: "Generate request failed (network/timeout)"
+            - logger.log: "Generate request failed"
       - if:
           condition:
             lambda: 'return id(generation_accepted);'
@@ -239,7 +374,6 @@ script:
             - delay: 120s
           else:
             - logger.log: "Skipping wait, fetching image"
-      # Fetch and display — on_download_finished handles display refresh and sleep
       - logger.log: "Fetching image..."
       - component.update: frame_image
 
@@ -249,11 +383,11 @@ script:
       - lambda: 'id(generation_accepted) = false;'
       - http_request.post:
           url: !lambda |-
-            return "${server_url}/api/v1/frame/${frame_id}/generate";
+            return "${server_url}/api/v1/frame/" + id(stored_frame_id) + "/generate";
           headers:
             Content-Type: application/json
             Authorization: !lambda |-
-              return "Bearer ${frame_token}";
+              return "Bearer " + id(stored_frame_token);
           body: !lambda |-
             char buf[64];
             snprintf(buf, sizeof(buf), "{\"battery\": %.0f, \"force\": true}", id(battery_pct));
@@ -262,19 +396,15 @@ script:
             - lambda: |-
                 if (response->status_code == 202) {
                   id(generation_accepted) = true;
-                  ESP_LOGI("petcast", "Force generation accepted (202)");
-                } else {
-                  ESP_LOGW("petcast", "Force generation failed (%d)", response->status_code);
                 }
           on_error:
-            - logger.log: "Force generate request failed"
+            - logger.log: "Force generate failed"
       - if:
           condition:
             lambda: 'return id(generation_accepted);'
           then:
-            - logger.log: "Force generation triggered, waiting 2 min..."
+            - logger.log: "Force gen triggered, waiting 2 min..."
             - delay: 120s
-      - logger.log: "Fetching image..."
       - component.update: frame_image
 
   - id: go_to_sleep
@@ -297,19 +427,44 @@ script:
   - id: update_battery_status
     mode: single
     then:
-      # Read battery percentage from AXP2101 register 0xA4
       - lambda: |-
           const uint8_t AXP_ADDR = 0x34;
           const uint8_t REG_BAT_PCT = 0xA4;
           auto bus = App.get_components<i2c::I2CComponent>()[0];
-
           uint8_t reg = REG_BAT_PCT;
           uint8_t pct = 0;
           bus->get_bus()->write(AXP_ADDR, &reg, 1);
           bus->get_bus()->read(AXP_ADDR, &pct, 1);
-
-          id(battery_pct) = (float)(pct & 0x7F);  // Bit 7 is validity flag
+          id(battery_pct) = (float)(pct & 0x7F);
           ESP_LOGI("battery", "Battery: %.0f%%", id(battery_pct));
+
+# Provisioning mode needs these string globals
+# (separate from the NVS-backed credentials)
+globals:
+  - id: claim_code_str
+    type: std::string
+    restore_value: false
+  - id: mac_addr_str
+    type: std::string
+    restore_value: false
+  - id: http_response_body
+    type: std::string
+    restore_value: false
+
+# Fonts for the provisioning screen
+font:
+  - file: "gfonts://Roboto"
+    id: title_font
+    size: 36
+  - file: "gfonts://Roboto"
+    id: body_font
+    size: 24
+  - file: "gfonts://Roboto Mono"
+    id: code_font
+    size: 64
+  - file: "gfonts://Roboto"
+    id: small_font
+    size: 16
 
 output:
   - platform: gpio

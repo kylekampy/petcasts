@@ -44,11 +44,11 @@ type SceneDescription struct {
 
 // Pipeline orchestrates the full generation flow.
 type Pipeline struct {
-	Config  *config.Config
-	DB      *db.DB
-	Store   *storage.Local
-	Gemini  GeminiClient
-	Logger  *slog.Logger
+	Config *config.Config
+	DB     *db.DB
+	Store  *storage.Local
+	Gemini GeminiClient
+	Logger *slog.Logger
 }
 
 // Result contains the outputs of a pipeline run.
@@ -253,7 +253,7 @@ func weightedChoice(weights []float64) int {
 
 const sceneSystemPrompt = `You are a creative director for an illustrated pet weather forecast displayed on a small e-ink frame. You design charming, anthropomorphic scenes where the pets act like little people — doing human activities appropriate to the weather and season.
 
-ANTHROPOMORPHISM: The pets should be doing human-like things. NOT just sitting, lying, or walking. Think: reading a book on the porch, sipping from a mug, grilling in the backyard, building a snowman, flying a kite, having a tea party, fishing, gardening, stargazing, playing board games. They can hold objects, wear accessories, sit in chairs, use tools. Make it whimsical and heartwarming.
+ANTHROPOMORPHISM: The pets should be doing human-like things. NOT just sitting, lying, or walking. Think: reading a book on the porch, sipping from a mug, grilling in the backyard, building a snowman, flying a kite, having a tea party, fishing, gardening, stargazing, playing board games, etc, etc. They can hold objects, wear accessories, sit in chairs, use tools. Make it whimsical and heartwarming. We want to surprise and delight the viewer.
 
 IMPORTANT: The art style describes HOW the image is rendered, not WHAT the pets are doing. The pets are the SUBJECTS depicted in that style — they are NOT creating art or doing anything related to the style itself. For example, "graffiti style" means the image looks like spray paint on a wall, NOT that the pets are painting graffiti.
 

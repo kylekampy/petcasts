@@ -3,12 +3,12 @@
 {{define "content"}}
 <hgroup>
   <h1>Frames</h1>
-  <p>Manage your paired e-ink frames.</p>
+  <p>Manage your e-ink frames.</p>
 </hgroup>
 
 {{if .Frames}}
 <section>
-  <h2>Paired Frames</h2>
+  <h2>Your Frames</h2>
   <div class="card-grid">
     {{range .Frames}}
     <article class="frame-card">
@@ -17,12 +17,9 @@
         {{if .HardwareType}}<small class="secondary">{{.HardwareType}}</small>{{end}}
       </header>
       <dl>
-        <dt>ID</dt>
-        <dd><code>{{.ID}}</code></dd>
         <dt>Battery</dt>
         <dd>
           {{with .BatteryPct}}
-          {{/* deref is a custom template func: func(p *float64) float64 { return *p } */}}
           <span class="battery-indicator {{if gt (deref .) 50.0}}battery-good{{else if gt (deref .) 20.0}}battery-warn{{else}}battery-low{{end}}">
             {{printf "%.0f" (deref .)}}%
           </span>
@@ -32,10 +29,6 @@
         </dd>
         <dt>Last Seen</dt>
         <dd>{{if .LastSeenAt}}{{.LastSeenAt.Format "Jan 2, 2006 3:04 PM"}}{{else}}<span class="secondary">Never</span>{{end}}</dd>
-        {{if .FirmwareVersion}}
-        <dt>Firmware</dt>
-        <dd>{{.FirmwareVersion}}</dd>
-        {{end}}
       </dl>
     </article>
     {{end}}
@@ -44,13 +37,37 @@
 {{end}}
 
 <section>
-  <h2>Pair a New Frame</h2>
-  <article>
-    <p>Enter this pairing code on your frame to connect it to your account.</p>
-    <div class="pairing-code-display">
-      <code class="pairing-code">{{.PairingCode}}</code>
+  <h2>Set Up a New Frame</h2>
+  <article class="setup-wizard">
+    <div class="setup-step">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <h3>Flash firmware</h3>
+        <p>Connect your frame via USB-C and click the button below.</p>
+        <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+        <esp-web-install-button manifest="/static/firmware/manifest.json">
+          <button slot="activate" class="contrast">Install Petcast Firmware</button>
+        </esp-web-install-button>
+        <small class="secondary">Requires Chrome or Edge. The frame must be connected via USB.</small>
+      </div>
     </div>
-    <p class="secondary"><small>The frame will send this code during setup. Once paired, it will appear in the list above.</small></p>
+
+    <div class="setup-step">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <h3>Connect to WiFi</h3>
+        <p>After flashing, you'll be prompted to enter your WiFi network and password.</p>
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <h3>Enter the claim code</h3>
+        <p>Your frame will display a setup code on its screen (like <code>WREN-4827</code>).</p>
+        <a href="/frames/claim" role="button">Enter Claim Code</a>
+      </div>
+    </div>
   </article>
 </section>
 {{end}}

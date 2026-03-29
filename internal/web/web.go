@@ -94,7 +94,7 @@ func (w *Web) loadTemplates(dir string) error {
 	w.templates["login"] = loginTmpl
 
 	// All other pages extend base
-	pages := []string{"dashboard", "pets", "groups", "styles", "history", "frames", "settings"}
+	pages := []string{"dashboard", "pets", "groups", "styles", "history", "frames", "claim", "settings"}
 	for _, page := range pages {
 		pagePath := filepath.Join(dir, page+".html")
 		tmpl, err := template.New("base.html").Funcs(funcMap).ParseFiles(basePath, pagePath)
@@ -147,6 +147,8 @@ func (w *Web) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /history", w.Sessions.RequireAuth(http.HandlerFunc(w.handleHistory)))
 
 	mux.Handle("GET /frames", w.Sessions.RequireAuth(http.HandlerFunc(w.handleFrames)))
+	mux.Handle("GET /frames/claim", w.Sessions.RequireAuth(http.HandlerFunc(w.handleFramesClaim)))
+	mux.Handle("POST /frames/claim", w.Sessions.RequireAuth(http.HandlerFunc(w.handleClaimFrame)))
 
 	mux.Handle("GET /settings", w.Sessions.RequireAuth(http.HandlerFunc(w.handleSettings)))
 	mux.Handle("POST /settings", w.Sessions.RequireAuth(http.HandlerFunc(w.handleUpdateSettings)))
@@ -160,6 +162,12 @@ func (w *Web) RegisterRoutes(mux *http.ServeMux) {
 // --- Page Handlers ---
 
 func (w *Web) handleLogin(rw http.ResponseWriter, r *http.Request) {
+	// Dev mode: auto-create session and redirect to dashboard
+	if devID := w.Sessions.DevUserID(); devID != "" {
+		w.Sessions.CreateSession(rw, devID)
+		http.Redirect(rw, r, "/dashboard", http.StatusFound)
+		return
+	}
 	w.render(rw, "login", nil)
 }
 
@@ -421,10 +429,51 @@ func (w *Web) handleFrames(rw http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	frames, _ := w.DB.ListUserFrames(user.ID)
 	w.render(rw, "frames", map[string]any{
-		"User":        user,
-		"Frames":      frames,
-		"PairingCode": w.PairingCode,
+		"User":   user,
+		"Frames": frames,
 	})
+}
+
+func (w *Web) handleFramesClaim(rw http.ResponseWriter, r *http.Request) {
+	user := auth.UserFromContext(r.Context())
+	w.render(rw, "claim", map[string]any{
+		"User": user,
+	})
+}
+
+func (w *Web) handleClaimFrame(rw http.ResponseWriter, r *http.Request) {
+	user := auth.UserFromContext(r.Context())
+	code := strings.TrimSpace(strings.ToUpper(r.FormValue("claim_code")))
+	if code == "" {
+		w.render(rw, "claim", map[string]any{
+			"User":  user,
+			"Error": "Please enter a claim code.",
+		})
+		return
+	}
+
+	// Look up pending frame by claim code
+	pf, err := w.DB.GetPendingFrameByClaimCode(code)
+	if err != nil {
+		w.render(rw, "claim", map[string]any{
+			"User":  user,
+			"Error": "No frame found with that code. Make sure the code on your frame's screen matches.",
+		})
+		return
+	}
+
+	// Claim it
+	_, _, err = w.DB.ClaimFrame(pf.MAC, user.ID)
+	if err != nil {
+		w.Logger.Error("claim frame failed", "mac", pf.MAC, "error", err)
+		w.render(rw, "claim", map[string]any{
+			"User":  user,
+			"Error": "Failed to claim frame. It may have already been claimed.",
+		})
+		return
+	}
+
+	http.Redirect(rw, r, "/frames", http.StatusFound)
 }
 
 func (w *Web) handleSettings(rw http.ResponseWriter, r *http.Request) {

@@ -27,6 +27,7 @@ type Server struct {
 	Store       *storage.Local
 	Pipeline    *pipeline.Pipeline
 	PairingCode string
+	ServerURL   string
 	Logger      *slog.Logger
 
 	web        WebApp
@@ -56,6 +57,8 @@ func (s *Server) Handler() http.Handler {
 
 	// Frame API
 	mux.HandleFunc("POST /api/v1/pair", s.handlePair)
+	mux.HandleFunc("POST /api/v1/register", s.handleRegister)
+	mux.HandleFunc("GET /api/v1/provision/{mac}", s.handleProvision)
 	mux.HandleFunc("POST /api/v1/frame/{id}/generate", s.handleFrameGenerate)
 	mux.HandleFunc("GET /api/v1/frame/{id}/image", s.handleFrameImage)
 
@@ -132,6 +135,74 @@ func (s *Server) handlePair(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, http.StatusOK, pairResponse{
 		FrameID: frame.ID,
 		Token:   token,
+	})
+}
+
+// --- Provisioning endpoints ---
+
+type registerRequest struct {
+	MAC          string `json:"mac"`
+	ClaimCode    string `json:"claim_code"`
+	HardwareType string `json:"hardware_type"`
+	DisplayW     int    `json:"display_w"`
+	DisplayH     int    `json:"display_h"`
+}
+
+func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
+	var req registerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.MAC == "" || req.ClaimCode == "" {
+		jsonError(w, http.StatusBadRequest, "mac and claim_code are required")
+		return
+	}
+	if req.DisplayW == 0 {
+		req.DisplayW = 800
+	}
+	if req.DisplayH == 0 {
+		req.DisplayH = 480
+	}
+
+	if err := s.DB.RegisterPendingFrame(req.MAC, req.ClaimCode, req.HardwareType, req.DisplayW, req.DisplayH); err != nil {
+		s.Logger.Error("register pending frame failed", "mac", req.MAC, "error", err)
+		jsonError(w, http.StatusInternalServerError, "registration failed")
+		return
+	}
+
+	s.Logger.Info("frame registered", "mac", req.MAC, "claim_code", req.ClaimCode)
+	jsonResponse(w, http.StatusOK, map[string]string{
+		"status":  "registered",
+		"message": "Waiting for user to claim this frame.",
+	})
+}
+
+func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
+	mac := r.PathValue("mac")
+
+	frameID, token, err := s.DB.GetProvisionCredentials(mac)
+	if err != nil {
+		s.Logger.Error("provision lookup failed", "mac", mac, "error", err)
+		jsonResponse(w, http.StatusOK, map[string]string{"status": "pending"})
+		return
+	}
+
+	if frameID == "" {
+		// Still pending or unknown — same response (no info leak)
+		jsonResponse(w, http.StatusOK, map[string]string{"status": "pending"})
+		return
+	}
+
+	// Credentials ready — return them and mark provisioned
+	s.DB.MarkProvisioned(mac)
+	s.Logger.Info("frame provisioned", "mac", mac, "frame_id", frameID)
+
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"status":     "claimed",
+		"frame_id":   frameID,
+		"api_token":  token,
+		"server_url": s.ServerURL,
 	})
 }
 

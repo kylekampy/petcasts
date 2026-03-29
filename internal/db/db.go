@@ -179,6 +179,26 @@ func (d *DB) migrate() error {
 		return err
 	}
 
+	_, err = d.db.Exec(`
+		CREATE TABLE IF NOT EXISTS pending_frames (
+			mac TEXT PRIMARY KEY,
+			claim_code TEXT NOT NULL,
+			hardware_type TEXT NOT NULL DEFAULT '',
+			display_w INTEGER NOT NULL DEFAULT 800,
+			display_h INTEGER NOT NULL DEFAULT 480,
+			frame_id TEXT,
+			provision_token TEXT,
+			user_id TEXT,
+			status TEXT NOT NULL DEFAULT 'pending',
+			created_at TEXT NOT NULL,
+			claimed_at TEXT,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);
+	`)
+	if err != nil {
+		return err
+	}
+
 	// Add user_id to frames if not already present (migration)
 	d.db.Exec(`ALTER TABLE frames ADD COLUMN user_id TEXT REFERENCES users(id)`)
 	// Add user_id to selection_history if not present
