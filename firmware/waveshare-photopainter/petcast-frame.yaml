@@ -87,6 +87,9 @@ psram:
 ota:
   - platform: esphome
 
+# HA auto-discovery via mDNS — if HA is on the network, the frame appears automatically
+api:
+
 wifi:
   ap:
     ssid: "Petcast-Frame"
@@ -485,11 +488,41 @@ sensor:
     lambda: 'return id(boot_count);'
     update_interval: never
     accuracy_decimals: 0
+    entity_category: diagnostic
+    icon: "mdi:counter"
   - platform: template
     name: "Battery Level"
     id: battery_level_sensor
     unit_of_measurement: "%"
     icon: "mdi:battery"
     device_class: battery
+    state_class: measurement
     lambda: 'return id(battery_pct);'
+    update_interval: never
+
+text_sensor:
+  - platform: template
+    name: "Today's Image URL"
+    id: today_image_url
+    icon: "mdi:image"
+    lambda: |-
+      if (id(stored_frame_id).length() > 0) {
+        return "${server_url}/api/v1/frame/" + id(stored_frame_id) + "/image";
+      }
+      return std::string("");
+    update_interval: never
+  - platform: template
+    name: "Frame ID"
+    id: frame_id_sensor
+    icon: "mdi:identifier"
+    entity_category: diagnostic
+    lambda: 'return id(stored_frame_id);'
+    update_interval: never
+  - platform: template
+    name: "Provisioning Status"
+    id: provision_status_sensor
+    icon: "mdi:link-variant"
+    entity_category: diagnostic
+    lambda: |-
+      return id(provisioned) ? std::string("provisioned") : std::string("pending");
     update_interval: never
