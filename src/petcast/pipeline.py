@@ -58,9 +58,28 @@ def run(root: Path, debug: bool = False, battery_pct: float | None = None, force
     print(f"  Activity: {scene.activity}")
     print(f"  ({time.time() - t:.1f}s)")
 
-    # Step 4: Image generation
+    # Step 4: Image generation (with moderation retry — pick a new style if blocked)
     t = _step("Generating image...")
-    raw_image = generate_image(config, selection, scene, forecast, root, battery_pct=battery_pct)
+    raw_image = None
+    attempted_styles = {selection.style}
+    for attempt in range(3):
+        try:
+            raw_image = generate_image(config, selection, scene, forecast, root, battery_pct=battery_pct)
+            break
+        except Exception as e:
+            if not _is_moderation_error(e):
+                raise
+            print(f"  Moderation blocked on attempt {attempt + 1}; re-selecting style and retrying")
+            alt_styles = [s for s in config.styles if s not in attempted_styles]
+            if not alt_styles:
+                raise
+            selection = type(selection)(pets=selection.pets, photo=selection.photo, style=alt_styles[0])
+            attempted_styles.add(selection.style)
+            print(f"  New style: {selection.style[:80]}...")
+            scene = generate_scene(config, selection, forecast, history, battery_pct=battery_pct)
+            print(f"  New activity: {scene.activity}")
+    if raw_image is None:
+        raise RuntimeError("All moderation retries exhausted")
     print(f"  Size: {raw_image.size[0]}x{raw_image.size[1]}")
     print(f"  ({time.time() - t:.1f}s)")
     if debug:
@@ -117,6 +136,12 @@ def run(root: Path, debug: bool = False, battery_pct: float | None = None, force
     total = time.time() - pipeline_start
     _step(f"Done! Total: {total:.1f}s — saved to {archive_path}")
     return config.output.latest
+
+
+def _is_moderation_error(exc: Exception) -> bool:
+    """Detect OpenAI safety/moderation rejections so we can retry with a different style."""
+    msg = str(exc).lower()
+    return "moderation_blocked" in msg or "safety system" in msg
 
 
 def _save_debug(img: Image.Image, debug_dir: Path, name: str) -> None:
