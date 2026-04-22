@@ -38,10 +38,12 @@ The pets are the SUBJECTS depicted in that style — they are NOT creating art o
 anything related to the style itself. For example, "graffiti style" means the image looks \
 like spray paint on a wall, NOT that the pets are painting graffiti.
 
-SEASONAL ACCURACY: The scene must match the actual season and weather at the location. \
-In the upper Midwest in early spring, trees are bare, grass is brown/dormant. In summer, \
-everything is lush and green. In fall, leaves are changing. In winter, there's snow. \
-Don't depict lush green when the season doesn't support it.
+SEASONAL ACCURACY: The scene must match what the landscape ACTUALLY looks like on this \
+specific date — not a generic idea of the season. You will be given a phenology description \
+of the current state (bare vs. budding vs. leafing out vs. full canopy vs. turning vs. falling). \
+Follow it precisely. Transitions matter — mid-April trees are NOT bare AND NOT fully leafed out; \
+they are just budding with tiny tender leaves. Early September is NOT peak fall — it's mostly \
+green with hints of color. Match the phenology description exactly in foreground and background.
 
 ART STYLE: You will be given a specific art style. In your descriptions, lean HEAVILY \
 into the visual characteristics of that style. Describe specific techniques, textures, \
@@ -88,15 +90,7 @@ def generate_scene(
 
     now = datetime.now(ZoneInfo(forecast["timezone"]))
     date_str = now.strftime("%B %-d, %Y")
-    month = now.month
-    if month in (3, 4, 5):
-        season = "spring"
-    elif month in (6, 7, 8):
-        season = "summer"
-    elif month in (9, 10, 11):
-        season = "fall/autumn"
-    else:
-        season = "winter"
+    season, phenology = _phenology(now.month, now.day)
 
     all_pet_names = ", ".join(p.name for p in selection.pets)
 
@@ -106,7 +100,9 @@ Pets (ALL must appear in the scene):
 
 Date: {date_str}
 Season: {season}
-Location: {config.location.name}
+Phenology (what the landscape actually looks like RIGHT NOW — match this precisely):
+{phenology}
+Location: {config.location.name} (upper Midwest, ~44°N)
 
 Weather: {forecast['weather_desc']}, high {forecast['high_f']:.0f}°F / low {forecast['low_f']:.0f}°F, \
 {forecast['precip_chance']}% chance of precipitation, wind {forecast['wind_mph']:.0f} mph.
@@ -156,3 +152,32 @@ a charming but noticeable part of the scene.
         constraints=data["constraints"],
         weather_integration=data.get("weather_integration", "on a small sign in the corner"),
     )
+
+
+# Phenology calendar tuned for upper Midwest (~44°N, e.g. La Crosse WI).
+# (start_month, start_day, season, description) — last entry wraps back to winter.
+_PHENOLOGY_CALENDAR = [
+    (1, 1,  "winter",       "Deep winter. Snow cover on the ground and branches. Trees fully bare, dark silhouettes. Grass hidden or brown where exposed. Frozen puddles, ice on water."),
+    (3, 1,  "late winter",  "Late winter thaw. Patchy dirty snow, brown mud, matted dead grass. Trees still fully bare. Landscape drab — grays, browns, dull ochre."),
+    (3, 21, "early spring", "Early spring. Trees STILL BARE — no leaves yet. Buds may be swelling on branches but no green. Grass just starting to green at the base, mostly still brown/tan. Maybe crocuses or early daffodils. Mud season."),
+    (4, 15, "mid-spring",   "Mid-spring transition. Trees are JUST starting to leaf out — tiny tender pale-green leaves emerging from buds, branches still largely visible through sparse foliage. NOT bare, NOT full canopy. Flowering trees in bloom (redbud, crabapple, magnolia — pink/white blossoms). Grass greening up but still patchy. Daffodils and tulips."),
+    (5, 1,  "late spring",  "Late spring. Trees rapidly leafing out with fresh bright yellow-green leaves, canopy filling in but still translucent. Lush new growth everywhere. Grass fully green. Flowering trees finishing, lilacs and tulips peaking."),
+    (5, 21, "early summer", "Early summer. Full leaf-out, trees in fresh vibrant green, dense canopy. Grass lush and green. Gardens filling in. Long daylight."),
+    (6, 16, "high summer",  "High summer. Deep mature green canopy, full dense foliage. Grass green but may show heat stress or dry patches. Wildflowers, gardens in full bloom."),
+    (8, 16, "late summer",  "Late summer. Foliage still full but looking tired — dusty, darker, some yellowing on edges. Grass may be browning from heat. Fields of mature crops (corn tall, soy turning)."),
+    (9, 11, "early fall",   "Early fall. First hints of color — scattered yellow and orange leaves mixed with green, especially on maples and early-turning trees. Grass still green. Crisp air, clear skies."),
+    (10, 1, "peak fall",    "Peak fall color. Blazing reds, oranges, yellows across the canopy. Leaves starting to drift down. Grass still green but cooling. Pumpkins, cornstalks."),
+    (10, 21,"late fall",    "Late fall. Most leaves have fallen — trees mostly bare with a few stubborn brown leaves clinging. Ground covered in fallen leaves. Grass fading to tan/brown. Gray skies common."),
+    (11, 11,"early winter", "Early winter. Trees fully bare, dark wet branches. Grass brown and dormant. Possible first snow — light dusting or flurries. Overcast, raw, damp."),
+    (12, 1, "winter",       "Winter. Snow likely on the ground. Trees fully bare, sometimes frosted or snow-laden. Grass hidden under snow or brown where exposed. Frozen landscape, low sun."),
+]
+
+
+def _phenology(month: int, day: int) -> tuple[str, str]:
+    """Return (season, multi-line phenology description) for the given month/day."""
+    key = (month, day)
+    match = _PHENOLOGY_CALENDAR[0]
+    for entry in _PHENOLOGY_CALENDAR:
+        if (entry[0], entry[1]) <= key:
+            match = entry
+    return match[2], match[3]

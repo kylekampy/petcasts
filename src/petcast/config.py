@@ -20,6 +20,13 @@ class GeminiConfig:
 
 
 @dataclass
+class OpenAIConfig:
+    image_model: str
+    quality: str
+    size: str
+
+
+@dataclass
 class DisplayConfig:
     width: int
     height: int
@@ -57,7 +64,9 @@ class PetGroup:
 class Config:
     location: LocationConfig
     styles: list[str]
+    image_provider: str
     gemini: GeminiConfig
+    openai: OpenAIConfig
     display: DisplayConfig
     output: OutputConfig
     cooldowns: CooldownConfig
@@ -74,7 +83,8 @@ def load_config(root: Path) -> Config:
         pets_raw = yaml.safe_load(f)
 
     loc = raw["location"]
-    ai = raw["gemini"]
+    gem = raw["gemini"]
+    oai = raw.get("openai", {})
     disp = raw["display"]
     out = raw["output"]
     cd = raw["cooldowns"]
@@ -86,9 +96,15 @@ def load_config(root: Path) -> Config:
             longitude=loc["longitude"],
         ),
         styles=raw["styles"],
+        image_provider=raw.get("image_provider", "gemini"),
         gemini=GeminiConfig(
-            image_model=ai["image_model"],
-            chat_model=ai["chat_model"],
+            image_model=gem["image_model"],
+            chat_model=gem["chat_model"],
+        ),
+        openai=OpenAIConfig(
+            image_model=oai.get("image_model", "gpt-image-2"),
+            quality=oai.get("quality", "medium"),
+            size=oai.get("size", "1536x1024"),
         ),
         display=DisplayConfig(width=disp["width"], height=disp["height"]),
         output=OutputConfig(

@@ -1,5 +1,7 @@
 """Open-Meteo weather client."""
 
+from collections import Counter
+from datetime import datetime
 from typing import TypedDict
 
 import httpx
@@ -127,6 +129,7 @@ def fetch_forecast(config: Config) -> Forecast:
             "sunrise",
             "sunset",
         ]),
+        "hourly": "weather_code",
         "temperature_unit": "fahrenheit",
         "wind_speed_unit": "mph",
         "timezone": "auto",
@@ -138,7 +141,9 @@ def fetch_forecast(config: Config) -> Forecast:
     data = resp.json()
 
     daily = data["daily"]
-    code = daily["weather_code"][0]
+    sunrise = daily["sunrise"][0]
+    sunset = daily["sunset"][0]
+    code = _dominant_daylight_code(data.get("hourly", {}), sunrise, sunset, daily["weather_code"][0])
 
     return Forecast(
         weather_code=code,
@@ -148,8 +153,48 @@ def fetch_forecast(config: Config) -> Forecast:
         low_f=daily["temperature_2m_min"][0],
         precip_chance=daily["precipitation_probability_max"][0],
         wind_mph=daily["wind_speed_10m_max"][0],
-        sunrise=daily["sunrise"][0],
-        sunset=daily["sunset"][0],
+        sunrise=sunrise,
+        sunset=sunset,
         timezone=data.get("timezone", "UTC"),
         weather_icon_desc=ICON_DESCRIPTIONS.get(code, "a plain cloud"),
     )
+
+
+def _dominant_daylight_code(hourly: dict, sunrise: str, sunset: str, fallback: int) -> int:
+    """Return the most representative weather code during daylight hours.
+
+    Rules:
+      1. Any thunderstorm hour (95-99) wins — always depict storms.
+      2. Precipitation codes (>=51) win if ≥2 daylight hours have them (most common wins).
+      3. Otherwise return the mode of daylight hours, breaking ties by most severe.
+    """
+    times = hourly.get("time") or []
+    codes = hourly.get("weather_code") or []
+    if not times or not codes or len(times) != len(codes):
+        return fallback
+
+    try:
+        sr = datetime.fromisoformat(sunrise)
+        ss = datetime.fromisoformat(sunset)
+    except ValueError:
+        return fallback
+
+    daylight_codes = [
+        c for t, c in zip(times, codes)
+        if sr <= datetime.fromisoformat(t) <= ss
+    ]
+    if not daylight_codes:
+        return fallback
+
+    if any(c >= 95 for c in daylight_codes):
+        storm = [c for c in daylight_codes if c >= 95]
+        return Counter(storm).most_common(1)[0][0]
+
+    precip = [c for c in daylight_codes if c >= 51]
+    if len(precip) >= 2:
+        return Counter(precip).most_common(1)[0][0]
+
+    counts = Counter(daylight_codes)
+    max_count = max(counts.values())
+    winners = [c for c, n in counts.items() if n == max_count]
+    return max(winners)

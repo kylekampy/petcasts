@@ -1,11 +1,11 @@
-"""Gemini image generation with pet reference photos."""
+"""Image generation — dispatches to OpenAI or Gemini based on config."""
 
+import base64
+import io
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from google import genai
-from google.genai import types
 from PIL import Image
 
 from petcast.config import Config
@@ -22,14 +22,52 @@ def generate_image(
     root: Path,
     battery_pct: float | None = None,
 ) -> Image.Image:
-    """Generate an image using Gemini with pet reference photos."""
+    """Generate an image using the configured provider."""
     prompt = _build_prompt(selection, scene, forecast, battery_pct=battery_pct)
-
-    # Build contents: prompt text + reference photo
-    contents: list = [prompt]
     photo_path = root / "pets" / "input" / selection.photo
-    if photo_path.exists():
-        contents.append(Image.open(photo_path))
+    ref_photo = photo_path if photo_path.exists() else None
+
+    provider = config.image_provider.lower()
+    if provider == "openai":
+        return _generate_openai(config, prompt, ref_photo)
+    if provider == "gemini":
+        return _generate_gemini(config, prompt, ref_photo)
+    raise ValueError(f"Unknown image_provider: {config.image_provider!r} (expected 'openai' or 'gemini')")
+
+
+def _generate_openai(config: Config, prompt: str, ref_photo: Path | None) -> Image.Image:
+    """Generate via OpenAI gpt-image-2. Uses images.edit when a reference photo exists."""
+    from openai import OpenAI
+
+    client = OpenAI()
+    kwargs = {
+        "model": config.openai.image_model,
+        "prompt": prompt,
+        "size": config.openai.size,
+        "quality": config.openai.quality,
+        "n": 1,
+    }
+
+    if ref_photo is not None:
+        with open(ref_photo, "rb") as f:
+            resp = client.images.edit(image=f, **kwargs)
+    else:
+        resp = client.images.generate(**kwargs)
+
+    b64 = resp.data[0].b64_json
+    if not b64:
+        raise RuntimeError("OpenAI returned no image data")
+    return Image.open(io.BytesIO(base64.b64decode(b64)))
+
+
+def _generate_gemini(config: Config, prompt: str, ref_photo: Path | None) -> Image.Image:
+    """Generate via Gemini image model with optional reference photo."""
+    from google import genai
+    from google.genai import types
+
+    contents: list = [prompt]
+    if ref_photo is not None:
+        contents.append(Image.open(ref_photo))
 
     client = genai.Client()
     response = client.models.generate_content(
@@ -43,10 +81,8 @@ def generate_image(
         ),
     )
 
-    # Extract image from response — convert to PIL Image
     for part in response.parts:
         if part.inline_data is not None:
-            import io
             return Image.open(io.BytesIO(part.inline_data.data))
 
     raise RuntimeError("No image was generated in the response")
@@ -110,8 +146,7 @@ RULES:
 - No text except the weather info.
 - Season and weather reflected in the environment.
 - Do NOT add any border, frame, or white edge around the image.
-- IMPORTANT: This image will be generated at 3:2 aspect ratio but CROPPED to 5:3 (800x480). \
-That means ~10% of the top and bottom will be cut off. Keep ALL important content \
+- IMPORTANT: The image will be cropped to 5:3 (800x480). Keep ALL important content \
 (pets, weather info, focal points) within the center 80% of the image vertically. \
 Extend backgrounds to the full edges but don't put anything important near the top or bottom.
 """

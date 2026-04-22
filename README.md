@@ -2,7 +2,7 @@
 
 AI-generated daily pet weather forecasts for e-ink displays. Heavily inspired by [forecats](https://github.com/jwardbond/forecats).
 
-Petcast picks your pets, checks the weather, generates a styled scene via Google Gemini, dithers it for a 6-color e-ink palette, and serves it over HTTP for your display to fetch.
+Petcast picks your pets, checks the weather, designs a scene with Gemini, renders it with OpenAI `gpt-image-2` (or Gemini — your choice), dithers it for a 6-color e-ink palette, and serves it over HTTP for your display to fetch.
 
 ![Graffiti street art — Zeya and Mumford](docs/samples/graffiti_street_art.png)
 ![Children's book — reading together](docs/samples/childrens_book_reading.png)
@@ -12,9 +12,9 @@ Petcast picks your pets, checks the weather, generates a styled scene via Google
 ## How it works
 
 1. **Pick a photo** — randomly selects a reference photo from your collection. The pets in that photo become the cast for the day.
-2. **Fetch weather** — pulls today's forecast from [Open-Meteo](https://open-meteo.com/) (free, no API key needed).
-3. **Generate a scene** — Gemini 2.5 Flash designs an anthropomorphic scene where the pets do human-like activities (sipping coffee, flying kites, reading books) appropriate to the weather and season, described in the visual language of a randomly chosen art style.
-4. **Generate the image** — Gemini 3 Pro renders the scene with creatively integrated weather info (date, temperature, weather icon), using reference photos for pet likeness. The weather info is woven into the art style — on a sign, chalkboard, newspaper, banner, etc.
+2. **Fetch weather** — pulls today's forecast from [Open-Meteo](https://open-meteo.com/) (free, no API key needed). The weather code is computed as the dominant condition across daylight hours (not Open-Meteo's "worst hour wins" default), so a single overcast hour won't turn a sunny day cloudy.
+3. **Generate a scene** — Gemini 2.5 Flash designs an anthropomorphic scene where the pets do human-like activities (sipping coffee, flying kites, reading books) appropriate to the weather, season, and location-specific phenology (bare vs. budding vs. leafed-out trees, etc.), described in the visual language of a randomly chosen art style.
+4. **Generate the image** — the configured image provider (default: OpenAI `gpt-image-2`; optionally Gemini 3 Pro) renders the scene with creatively integrated weather info (date, temperature, weather icon), using the selected reference photo for pet likeness. The weather info is woven into the art style — on a sign, chalkboard, newspaper, banner, etc.
 5. **Dither** — Atkinson dithers the image to the Spectra 6 e-ink palette (black, white, red, green, blue, yellow) at 800x480.
 6. **Serve** — an HTTP server lets your display fetch the image whenever it's ready.
 
@@ -25,8 +25,12 @@ Petcast picks your pets, checks the weather, generates a styled scene via Google
 git clone https://github.com/kylekampy/petcasts.git
 cd petcasts
 
-# Add your Google API key (get one at https://ai.google.dev)
-echo "GOOGLE_API_KEY=..." > .env
+# Add API keys — Google for scene descriptions (and optionally image), OpenAI for image gen
+# Google: https://ai.google.dev  OpenAI: https://platform.openai.com/api-keys
+cat > .env <<EOF
+GOOGLE_API_KEY=...
+OPENAI_API_KEY=...
+EOF
 
 # Install deps
 uv sync
@@ -58,6 +62,7 @@ docker run -d \
   --name petcast \
   -p 7777:7777 \
   -e GOOGLE_API_KEY=... \
+  -e OPENAI_API_KEY=... \
   -v /opt/volumes/petcast/state:/app/pets/state \
   -v /opt/volumes/petcast/output:/app/output \
   --restart unless-stopped \
@@ -113,7 +118,7 @@ The frame sends its battery percentage with each generation request. When batter
 2. **Replace the pet photos** in `pets/input/` with your own
 3. **Edit `pets/meta/pets.yaml`** — name each pet, describe their appearance and personality, and list which photos they appear in
 4. **Edit `config.yaml`** — set your location, tweak styles, adjust cooldowns
-5. **Add your `GOOGLE_API_KEY`** as a repo secret (for the GitHub Action) and in `.env` (for local dev)
+5. **Add `GOOGLE_API_KEY` and `OPENAI_API_KEY`** as repo secrets (for the GitHub Action) and in `.env` (for local dev). The OpenAI key is only required if `image_provider: openai` in `config.yaml`.
 6. **Push** — the GitHub Action builds and publishes your container to your own ghcr.io registry
 
 ### pets.yaml format
@@ -149,6 +154,35 @@ Photos define natural groupings — if Luna and Max appear in `luna_and_max.png`
 | `/output/latest.json` | GET | The latest metadata |
 | `/output/archive/...` | GET | Archived images by date |
 
+## Configuration
+
+Key knobs in `config.yaml`:
+
+```yaml
+image_provider: 'openai'   # 'openai' | 'gemini'
+
+openai:
+  image_model: 'gpt-image-2'
+  quality: 'medium'        # 'low' | 'medium' | 'high'
+  size: '1536x1024'        # 3:2 landscape matches the 5:3 crop target
+
+gemini:
+  image_model: 'gemini-3-pro-image-preview'
+  chat_model: 'gemini-2.5-flash'   # used for the scene description regardless of image provider
+```
+
+### Phenology
+
+`src/petcast/scene.py` contains a `_PHENOLOGY_CALENDAR` tuned for the upper Midwest (~44°N) that maps each date range to a landscape description (bare trees vs. budding vs. full canopy, etc.). This is injected into the scene prompt so late-April scenes show tender pale-green leaves, mid-October shows peak fall color, and so on — rather than generic "spring" or "fall" cues. If you're in a different climate, edit the calendar entries in `_phenology` to match your local transitions.
+
+### Styles
+
+Art styles are listed under `styles:` in `config.yaml`. Each is a free-text description; the scene designer leans heavily into the medium's visual language. Styles that work best on 6-color e-ink use flat saturated colors, heavy black outlines, and minimal gradients (pop art, stained glass, Bauhaus, linocut, pixel art, papercut). Subtle/muted palettes and fine textures tend to muddy under dithering.
+
 ## Cost
 
-~$0.14 per generation (Gemini 3 Pro for the image + Gemini 2.5 Flash for the scene). At one image per day, that's about **$4/month**.
+Default: OpenAI `gpt-image-2` at `medium` quality (~$0.053/image) + Gemini 2.5 Flash for the scene (~$0.001). About **$1.60/month** at one image per day.
+
+Switch providers via `image_provider` in `config.yaml`:
+- `openai` — tune `openai.quality` (`low` ≈ $0.006, `medium` ≈ $0.053, `high` ≈ $0.211 per 1024² image) and `openai.size`. Requires a [verified OpenAI organization](https://platform.openai.com/settings/organization/general) for `gpt-image-2` access.
+- `gemini` — uses `gemini-3-pro-image-preview` (~$0.154/image, ~$4.60/month)
