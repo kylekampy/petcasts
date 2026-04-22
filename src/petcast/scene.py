@@ -1,11 +1,9 @@
-"""Structured scene prompt generation via Gemini."""
+"""Structured scene prompt generation. Dispatches to OpenAI or Gemini."""
 
 import json
 from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
-
-from google import genai
 
 from petcast.config import Config
 from petcast.select import Selection
@@ -128,22 +126,15 @@ or one of them is holding a nearly-empty battery. Make the low energy theme \
 a charming but noticeable part of the scene.
 """
 
-    client = genai.Client()
-    resp = client.models.generate_content(
-        model=config.gemini.chat_model,
-        contents=f"{SYSTEM_PROMPT}\n\n{user_prompt}",
-    )
+    provider = config.scene_provider.lower()
+    if provider == "openai":
+        raw = _chat_openai(config, user_prompt)
+    elif provider == "gemini":
+        raw = _chat_gemini(config, user_prompt)
+    else:
+        raise ValueError(f"Unknown scene_provider: {config.scene_provider!r}")
 
-    raw = resp.text.strip()
-    # Strip markdown fencing if present
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[1]
-        if raw.endswith("```"):
-            raw = raw[: raw.rfind("```")]
-        raw = raw.strip()
-
-    data, _ = json.JSONDecoder().raw_decode(raw)
-
+    data = _parse_scene_json(raw)
     return SceneDescription(
         activity=data["activity"],
         foreground=data["foreground"],
@@ -152,6 +143,43 @@ a charming but noticeable part of the scene.
         constraints=data["constraints"],
         weather_integration=data.get("weather_integration", "on a small sign in the corner"),
     )
+
+
+def _chat_openai(config: Config, user_prompt: str) -> str:
+    from openai import OpenAI
+
+    client = OpenAI()
+    resp = client.chat.completions.create(
+        model=config.openai.chat_model,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+        response_format={"type": "json_object"},
+    )
+    return resp.choices[0].message.content or ""
+
+
+def _chat_gemini(config: Config, user_prompt: str) -> str:
+    from google import genai
+
+    client = genai.Client()
+    resp = client.models.generate_content(
+        model=config.gemini.chat_model,
+        contents=f"{SYSTEM_PROMPT}\n\n{user_prompt}",
+    )
+    return resp.text or ""
+
+
+def _parse_scene_json(raw: str) -> dict:
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[1]
+        if raw.endswith("```"):
+            raw = raw[: raw.rfind("```")]
+        raw = raw.strip()
+    data, _ = json.JSONDecoder().raw_decode(raw)
+    return data
 
 
 # Phenology calendar tuned for upper Midwest (~44°N, e.g. La Crosse WI).

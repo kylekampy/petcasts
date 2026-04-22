@@ -24,6 +24,7 @@ class OpenAIConfig:
     image_model: str
     quality: str
     size: str
+    chat_model: str
 
 
 @dataclass
@@ -65,6 +66,7 @@ class Config:
     location: LocationConfig
     styles: list[str]
     image_provider: str
+    scene_provider: str
     gemini: GeminiConfig
     openai: OpenAIConfig
     display: DisplayConfig
@@ -97,6 +99,7 @@ def load_config(root: Path) -> Config:
         ),
         styles=raw["styles"],
         image_provider=raw.get("image_provider", "gemini"),
+        scene_provider=raw.get("scene_provider", "gemini"),
         gemini=GeminiConfig(
             image_model=gem["image_model"],
             chat_model=gem["chat_model"],
@@ -105,6 +108,7 @@ def load_config(root: Path) -> Config:
             image_model=oai.get("image_model", "gpt-image-2"),
             quality=oai.get("quality", "medium"),
             size=oai.get("size", "1536x1024"),
+            chat_model=oai.get("chat_model", "gpt-5.4-mini"),
         ),
         display=DisplayConfig(width=disp["width"], height=disp["height"]),
         output=OutputConfig(

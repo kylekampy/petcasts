@@ -145,9 +145,10 @@ styles:
     black mass and bare paper with no midtones. Should look like it was carved
     with rough tools in anger and pressed by hand — urgent, primitive, tactile.
 
-# Which provider renders the final image. Scene description still uses Gemini.
-# Options: 'openai' | 'gemini'
+# Which provider does the final image render vs the scene description.
+# Options for each: 'openai' | 'gemini'
 image_provider: 'openai'
+scene_provider: 'openai'
 
 gemini:
   image_model: 'gemini-3-pro-image-preview'
@@ -159,6 +160,9 @@ openai:
   quality: 'medium'
   # 3:2 landscape matches the 5:3 crop target. Options: '1024x1024', '1536x1024', '1024x1536'
   size: '1536x1024'
+  # Scene-description model. 'gpt-5.4-mini' is a safe default;
+  # 'gpt-5.4-nano' is cheaper if scenes feel rich enough on it.
+  chat_model: 'gpt-5.4-mini'
 
 display:
   width: 800
