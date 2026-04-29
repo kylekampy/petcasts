@@ -1,0 +1,29 @@
+# Copy to config.local.yaml for private celebration dates.
+# config.local.yaml is ignored by git and appended to config.yaml at runtime.
+
+celebrations:
+  events:
+    - id: sample-birthday
+      name: Someone
+      kind: birthday
+      date: '2000-01-01'
+      message_template: 'Happy {ordinal} Birthday, {name}'
+      prompt: >-
+        Make the birthday feel central and sweet. Integrate the message into
+        a banner, card, cake, chalkboard, or other object that fits the art style.
+      pets: selected
+      priority: 80
+
+    - id: sample-anniversary
+      name: Family Anniversary
+      kind: anniversary
+      date: '2001-06-15'
+      message_template: 'Happy {ordinal} Anniversary'
+      prompt: >-
+        Include all requested pets celebrating together and looking at the
+        camera, like a warm group portrait.
+      pets: all
+      # `photo: none` lets Petcast auto-select multiple reference photos when
+      # no single photo contains every requested pet.
+      photo: none
+      priority: 90

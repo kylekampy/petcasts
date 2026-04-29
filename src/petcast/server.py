@@ -276,7 +276,9 @@ def serve(root: Path, port: int = 7777):
     logger.info("Petcast server listening on port %d", port)
     logger.info("  POST /api/generate    — trigger image generation")
     logger.info("  GET  /api/status      — check status / latest metadata")
-    logger.info("  GET  /output/latest.png — fetch the latest image")
+    logger.info("  GET  /output/latest.png     — dithered image for the frame")
+    logger.info("  GET  /output/latest_raw.png — full-quality raw for sharing")
+    logger.info("  GET  /output/daily/YYYY-MM-DD.png — per-day raw archive")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

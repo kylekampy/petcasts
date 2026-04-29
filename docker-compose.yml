@@ -10,4 +10,7 @@ services:
     volumes:
       - /opt/volumes/petcast/state:/app/pets/state
       - /opt/volumes/petcast/output:/app/output
+      # Flat per-day outputs for sharing (raw + dithered + metadata, named by date).
+      # Point Google Photos / Drive / any sync tool at this host path.
+      - /opt/volumes/petcast/daily:/app/output/daily
     restart: unless-stopped

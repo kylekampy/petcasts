@@ -2,12 +2,14 @@
 
 import base64
 import io
+from contextlib import ExitStack
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from PIL import Image
 
+from petcast.celebrations import ActiveCelebration, image_prompt_block
 from petcast.config import Config
 from petcast.scene import SceneDescription
 from petcast.select import Selection
@@ -21,22 +23,62 @@ def generate_image(
     forecast: Forecast,
     root: Path,
     battery_pct: float | None = None,
+    celebrations: list[ActiveCelebration] | None = None,
 ) -> Image.Image:
     """Generate an image using the configured provider."""
-    prompt = _build_prompt(selection, scene, forecast, battery_pct=battery_pct)
-    photo_path = root / "pets" / "input" / selection.photo
-    ref_photo = photo_path if photo_path.exists() else None
+    ref_photos = reference_photo_paths(config, selection, root)
+    prompt = _build_prompt(
+        selection,
+        scene,
+        forecast,
+        battery_pct=battery_pct,
+        celebrations=celebrations,
+        reference_count=len(ref_photos),
+    )
 
     provider = config.image_provider.lower()
     if provider == "openai":
-        return _generate_openai(config, prompt, ref_photo)
+        return _generate_openai(config, prompt, ref_photos)
     if provider == "gemini":
-        return _generate_gemini(config, prompt, ref_photo)
+        return _generate_gemini(config, prompt, ref_photos)
     raise ValueError(f"Unknown image_provider: {config.image_provider!r} (expected 'openai' or 'gemini')")
 
 
-def _generate_openai(config: Config, prompt: str, ref_photo: Path | None) -> Image.Image:
-    """Generate via OpenAI gpt-image-2. Uses images.edit when a reference photo exists."""
+def reference_photo_paths(config: Config, selection: Selection, root: Path) -> list[Path]:
+    """Return existing reference images that best cover the selected pets."""
+    input_dir = root / "pets" / "input"
+    refs: list[str] = []
+
+    if selection.photo:
+        refs.append(selection.photo)
+
+    target_names = {pet.name for pet in selection.pets}
+    existing_refs = [photo for photo in refs if (input_dir / photo).is_file()]
+    covered = _pet_names_for_photos(config, existing_refs) & target_names
+    uncovered = set(target_names - covered)
+
+    photo_to_names = _photo_pet_index(config)
+    while uncovered:
+        candidates = []
+        for photo, names in photo_to_names.items():
+            if photo in refs:
+                continue
+            newly_covered = names & uncovered
+            if not newly_covered:
+                continue
+            extra_pets = len(names - target_names)
+            candidates.append((-len(newly_covered), extra_pets, photo))
+        if not candidates:
+            break
+        _, _, photo = sorted(candidates)[0]
+        refs.append(photo)
+        uncovered -= photo_to_names[photo]
+
+    return [input_dir / photo for photo in refs if (input_dir / photo).is_file()]
+
+
+def _generate_openai(config: Config, prompt: str, ref_photos: list[Path]) -> Image.Image:
+    """Generate via OpenAI gpt-image-2. Uses images.edit when reference photos exist."""
     from openai import OpenAI
 
     client = OpenAI()
@@ -48,9 +90,10 @@ def _generate_openai(config: Config, prompt: str, ref_photo: Path | None) -> Ima
         "n": 1,
     }
 
-    if ref_photo is not None:
-        with open(ref_photo, "rb") as f:
-            resp = client.images.edit(image=f, **kwargs)
+    if ref_photos:
+        with ExitStack() as stack:
+            files = [stack.enter_context(open(path, "rb")) for path in ref_photos]
+            resp = client.images.edit(image=files if len(files) > 1 else files[0], **kwargs)
     else:
         resp = client.images.generate(**kwargs)
 
@@ -60,13 +103,13 @@ def _generate_openai(config: Config, prompt: str, ref_photo: Path | None) -> Ima
     return Image.open(io.BytesIO(base64.b64decode(b64)))
 
 
-def _generate_gemini(config: Config, prompt: str, ref_photo: Path | None) -> Image.Image:
-    """Generate via Gemini image model with optional reference photo."""
+def _generate_gemini(config: Config, prompt: str, ref_photos: list[Path]) -> Image.Image:
+    """Generate via Gemini image model with optional reference photos."""
     from google import genai
     from google.genai import types
 
     contents: list = [prompt]
-    if ref_photo is not None:
+    for ref_photo in ref_photos:
         contents.append(Image.open(ref_photo))
 
     client = genai.Client()
@@ -91,6 +134,8 @@ def _generate_gemini(config: Config, prompt: str, ref_photo: Path | None) -> Ima
 def _build_prompt(
     selection: Selection, scene: SceneDescription, forecast: Forecast,
     battery_pct: float | None = None,
+    celebrations: list[ActiveCelebration] | None = None,
+    reference_count: int = 0,
 ) -> str:
     today = datetime.now(ZoneInfo(forecast["timezone"]))
     day_name = today.strftime("%A")
@@ -103,6 +148,23 @@ def _build_prompt(
 
     pet_list = "\n".join(
         f"  {i+1}. {p.name}: {p.description}" for i, p in enumerate(selection.pets)
+    )
+    if reference_count == 1:
+        reference_instruction = "Use the reference photo to match each pet's appearance."
+    elif reference_count > 1:
+        reference_instruction = (
+            f"Use the {reference_count} reference photos to match each pet's appearance. "
+            "Reference photos may contain overlapping subsets of the pets; use them for likeness only."
+        )
+    else:
+        reference_instruction = (
+            "No reference photo is provided; use the pet descriptions to match each pet's appearance."
+        )
+    celebration_block = image_prompt_block(celebrations or [])
+    celebration_text_rule = (
+        " and the celebration text listed above"
+        if celebration_block
+        else ""
     )
 
     return f"""\
@@ -120,7 +182,7 @@ SCENE: {scene.activity}
 EXACTLY {pet_count_word.upper()} ({num_pets}) PETS — no more, no less. Each appears ONCE:
 {pet_list}
 
-Use the reference photo to match each pet's appearance. Every pet has exactly ONE head \
+{reference_instruction} Every pet has exactly ONE head \
 and ONE body. Do NOT duplicate any pet. Count the pets in your output — there must be \
 exactly {num_pets}.
 
@@ -132,6 +194,7 @@ BACKGROUND: {scene.background}
 MOOD: {scene.mood}
 COMPOSITION: {scene.constraints}
 
+{celebration_block + chr(10) if celebration_block else ""}\
 WEATHER INFO: Creatively incorporate today's forecast into the scene. Must include:
 - A weather ICON (visual, not text): {forecast['weather_icon_desc']}
 - The date: {day_name}, {month_name} {day_num}
@@ -143,10 +206,26 @@ newspaper, banner, window, sky writing, etc. Be creative.
 
 RULES:
 - Exactly {num_pets} pets, each with ONE head. No duplicates.
-- No text except the weather info.
+- No text except the weather info{celebration_text_rule}.
 - Season and weather reflected in the environment.
 - Do NOT add any border, frame, or white edge around the image.
 - IMPORTANT: The image will be cropped to 5:3 (800x480). Keep ALL important content \
 (pets, weather info, focal points) within the center 80% of the image vertically. \
 Extend backgrounds to the full edges but don't put anything important near the top or bottom.
 """
+
+
+def _photo_pet_index(config: Config) -> dict[str, set[str]]:
+    photo_to_names: dict[str, set[str]] = {}
+    for pet in config.pets:
+        for photo in pet.photos:
+            photo_to_names.setdefault(photo, set()).add(pet.name)
+    return photo_to_names
+
+
+def _pet_names_for_photos(config: Config, photos: list[str]) -> set[str]:
+    photo_to_names = _photo_pet_index(config)
+    names: set[str] = set()
+    for photo in photos:
+        names |= photo_to_names.get(photo, set())
+    return names

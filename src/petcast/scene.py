@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from petcast.celebrations import ActiveCelebration, scene_prompt_block
 from petcast.config import Config
 from petcast.select import Selection
 from petcast.weather import Forecast
@@ -75,6 +76,7 @@ def generate_scene(
     forecast: Forecast,
     history: list[dict],
     battery_pct: float | None = None,
+    celebrations: list[ActiveCelebration] | None = None,
 ) -> SceneDescription:
     """Use Gemini to generate a structured scene description."""
     pet_descriptions = "\n".join(
@@ -116,6 +118,10 @@ The pets should be doing something human-like and charming that fits the weather
 The environment must reflect the actual season and weather at this location. \
 Lean heavily into the visual language of the "{selection.style}" art style in your descriptions.
 """
+
+    celebration_block = scene_prompt_block(celebrations or [])
+    if celebration_block:
+        user_prompt += f"\n{celebration_block}\n"
 
     if battery_pct is not None and battery_pct < 15:
         user_prompt += f"""

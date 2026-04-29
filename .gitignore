@@ -5,8 +5,15 @@ __pycache__/
 dist/
 output/debug/
 output/archive/
+output/daily/
 output/latest.png
+output/latest_raw.png
 output/latest.json
+output/test_pattern.png
 .env
+config.local.yaml
+config.private.yaml
 .DS_Store
 esphome/secrets.yaml
+petcast.db*
+pets/state/celebrations.json

@@ -14,7 +14,7 @@ Petcast picks your pets, checks the weather, designs a scene with Gemini, render
 1. **Pick a photo** — randomly selects a reference photo from your collection. The pets in that photo become the cast for the day.
 2. **Fetch weather** — pulls today's forecast from [Open-Meteo](https://open-meteo.com/) (free, no API key needed). The weather code is computed as the dominant condition across daylight hours (not Open-Meteo's "worst hour wins" default), so a single overcast hour won't turn a sunny day cloudy.
 3. **Generate a scene** — Gemini 2.5 Flash designs an anthropomorphic scene where the pets do human-like activities (sipping coffee, flying kites, reading books) appropriate to the weather, season, and location-specific phenology (bare vs. budding vs. leafed-out trees, etc.), described in the visual language of a randomly chosen art style.
-4. **Generate the image** — the configured image provider (default: OpenAI `gpt-image-2`; optionally Gemini 3 Pro) renders the scene with creatively integrated weather info (date, temperature, weather icon), using the selected reference photo for pet likeness. The weather info is woven into the art style — on a sign, chalkboard, newspaper, banner, etc.
+4. **Generate the image** — the configured image provider (default: OpenAI `gpt-image-2`; optionally Gemini 3 Pro) renders the scene with creatively integrated weather info (date, temperature, weather icon), using one or more reference photos for pet likeness. The weather info is woven into the art style — on a sign, chalkboard, newspaper, banner, etc.
 5. **Dither** — Atkinson dithers the image to the Spectra 6 e-ink palette (black, white, red, green, blue, yellow) at 800x480.
 6. **Serve** — an HTTP server lets your display fetch the image whenever it's ready.
 
@@ -150,9 +150,13 @@ Photos define natural groupings — if Luna and Max appear in `luna_and_max.png`
 | `/api/generate` | POST | Trigger image generation (returns 202, runs async). Optional body: `{"battery": 85}` |
 | `/api/status` | GET | Latest metadata + `generating` flag |
 | `/api/archive` | GET | List all archived images with metadata |
-| `/output/latest.png` | GET | The latest generated image |
-| `/output/latest.json` | GET | The latest metadata |
-| `/output/archive/...` | GET | Archived images by date |
+| `/output/latest.png` | GET | Latest dithered image (800×480, for the e-ink frame) |
+| `/output/latest_raw.png` | GET | Latest full-quality raw image (1536×1024, for sharing) |
+| `/output/latest.json` | GET | Latest metadata |
+| `/output/daily/YYYY-MM-DD.png` | GET | Per-day raw image (one per day, overwritten on re-run) |
+| `/output/daily/YYYY-MM-DD_eink.png` | GET | Per-day dithered image |
+| `/output/daily/YYYY-MM-DD.json` | GET | Per-day metadata |
+| `/output/archive/...` | GET | All runs ever, organized by date/time |
 
 ## Configuration
 
@@ -170,6 +174,43 @@ gemini:
   image_model: 'gemini-3-pro-image-preview'
   chat_model: 'gemini-2.5-flash'   # used for the scene description regardless of image provider
 ```
+
+### Private celebrations
+
+Petcast can add birthdays, anniversaries, holidays, and other special days to
+the scene and image prompts. Public holiday support is built in for common U.S.
+holidays plus Pi Day and May the Fourth. Private dates go in `config.local.yaml`,
+which is ignored by git.
+
+```bash
+cp config.local.example.yaml config.local.yaml
+```
+
+Example event:
+
+```yaml
+celebrations:
+  events:
+    - id: family-anniversary
+      name: Family Anniversary
+      kind: anniversary
+      date: '2001-06-15'
+      message_template: 'Happy {ordinal} Anniversary'
+      prompt: >-
+        Include all requested pets celebrating together and looking at the
+        camera, like a warm group portrait.
+      pets: all
+      photo: none   # auto-select multiple reference photos if no single photo has all pets
+      priority: 90
+```
+
+`date` may be `YYYY-MM-DD`, `MM/DD/YY`, `Month D, YYYY`, or a month/day with a
+separate `start_year`. Birthday and anniversary events can use `{ordinal}`,
+`{years}`, `{name}`, and `{year}` in `message_template`.
+
+Celebration scene ideas are recorded in `pets/state/celebrations.json` so the
+prompt can avoid reusing last year's concept for the same event. That file is
+also ignored by git.
 
 ### Phenology
 

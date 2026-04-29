@@ -12,7 +12,7 @@ from petcast.config import Config, Pet
 @dataclass
 class Selection:
     pets: list[Pet]
-    photo: str  # reference photo filename — pets are derived from this
+    photo: str | None  # reference photo filename; may be absent for all-pet scenes
     style: str
 
 
@@ -53,7 +53,7 @@ def select(config: Config, root: Path) -> Selection:
         age = now - entry_date
 
         if age < timedelta(days=config.cooldowns.photo_days):
-            if "photo" in entry:
+            if entry.get("photo"):
                 recent_photos.add(entry["photo"])
             for photo in entry.get("photos", []):
                 recent_photos.add(photo)
@@ -92,9 +92,10 @@ def record_selection(
     entry: dict = {
         "date": datetime.now().isoformat(),
         "pet_names": [p.name for p in selection.pets],
-        "photo": selection.photo,
         "style": selection.style,
     }
+    if selection.photo:
+        entry["photo"] = selection.photo
     if scene_activity:
         entry["scene"] = {"activity": scene_activity}
     history.append(entry)
