@@ -177,6 +177,15 @@ If it says "linocut print", the image should look like ink pressed from a carved
 If it says "graffiti on a wall", the image should look like spray paint on concrete. \
 The medium IS the image. Every pixel should reinforce the chosen art style.
 
+DISPLAY TARGET — ALSO CRITICAL:
+The final image will be resized to 800x480 and Atkinson-dithered to a six-color e-ink \
+palette: black, white, red, green, blue, and yellow. Design for that final display, not \
+for a high-resolution screen. Use bold simple shapes, thick outlines, large readable \
+lettering, high contrast, clear silhouettes, and a small number of major focal objects. \
+Avoid tiny text, thin lines, delicate textures, dense clutter, subtle gradients, soft \
+shadows, low-contrast details, and small decorative background elements that will turn \
+to noise after dithering.
+
 SCENE: {scene.activity}
 
 EXACTLY {pet_count_word.upper()} ({num_pets}) PETS — no more, no less. Each appears ONCE:
@@ -207,6 +216,8 @@ newspaper, banner, window, sky writing, etc. Be creative.
 RULES:
 - Exactly {num_pets} pets, each with ONE head. No duplicates.
 - No text except the weather info{celebration_text_rule}.
+- Weather and celebration text must be large, simple, high-contrast, and readable at 800x480.
+- Prefer chunky graphic composition over intricate detail; avoid gradients and fine texture.
 - Season and weather reflected in the environment.
 - Do NOT add any border, frame, or white edge around the image.
 - IMPORTANT: The image will be cropped to 5:3 (800x480). Keep ALL important content \

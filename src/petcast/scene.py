@@ -50,6 +50,12 @@ and visual elements unique to that medium. For example, for "linocut print" desc
 bold carved lines, ink texture, woodgrain showing through. For "stained glass" describe \
 thick black leading, jewel-toned glass segments, light shining through.
 
+DISPLAY LIMITATIONS: The final image is shown on a low-resolution 800x480 six-color \
+e-ink display after dithering. Design for bold readability, not fine illustration. Use \
+large simple shapes, thick outlines, strong silhouettes, high contrast, and clear focal \
+points. Avoid tiny props, dense visual clutter, subtle gradients, thin lines, delicate \
+textures, small background details, and any text that would become too small to read.
+
 COMPOSITION: The image will be cropped to a wider aspect ratio — top and bottom ~7% \
 will be cut off. Keep all important elements in the central 70% vertically. \
 The weather info will be creatively integrated into the scene (not necessarily a panel).
@@ -109,6 +115,9 @@ Weather: {forecast['weather_desc']}, high {forecast['high_f']:.0f}°F / low {for
 Sunrise: {forecast['sunrise']}, Sunset: {forecast['sunset']}
 
 Art style: {selection.style}
+
+Display target: {config.display.width}x{config.display.height} low-resolution six-color \
+e-ink. Keep the scene bold, simple, high-contrast, and readable after dithering.
 
 Recent scenes to AVOID repeating:
 {json.dumps(recent_activities) if recent_activities else "(none yet)"}
