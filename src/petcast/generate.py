@@ -202,6 +202,7 @@ FOREGROUND: {scene.foreground}
 BACKGROUND: {scene.background}
 MOOD: {scene.mood}
 COMPOSITION: {scene.constraints}
+WEATHER INTEGRATION IDEA: {scene.weather_integration}
 
 {celebration_block + chr(10) if celebration_block else ""}\
 WEATHER INFO: Creatively incorporate today's forecast into the scene. Must include:
@@ -210,13 +211,16 @@ WEATHER INFO: Creatively incorporate today's forecast into the scene. Must inclu
 - Temperature: {temp_str}\
 {f"""
 - A low battery warning ({battery_pct:.0f}%)""" if battery_pct is not None and battery_pct < 15 else ""}
-Integrate these naturally in whatever way fits the art style — a sign, chalkboard, \
-newspaper, banner, window, sky writing, etc. Be creative.
+Use the WEATHER INTEGRATION IDEA above. Integrate the forecast naturally into that \
+object or setting as part of the scene, and do not add a separate forecast placard, \
+card, board, newspaper, or panel unless that is explicitly the integration idea.
 
 RULES:
 - Exactly {num_pets} pets, each with ONE head. No duplicates.
 - No text except the weather info{celebration_text_rule}.
 - Weather and celebration text must be large, simple, high-contrast, and readable at 800x480.
+- Do NOT pose pets as weather presenters. No pet should point at, present, announce, \
+read, study, check, or consult the forecast, a sign, a card, the sky, or the viewer.
 - Prefer chunky graphic composition over intricate detail; avoid gradients and fine texture.
 - Season and weather reflected in the environment.
 - Do NOT add any border, frame, or white edge around the image.

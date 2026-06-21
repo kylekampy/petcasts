@@ -85,7 +85,10 @@ def select(config: Config, root: Path) -> Selection:
 
 
 def record_selection(
-    root: Path, selection: Selection, scene_activity: str | None = None
+    root: Path,
+    selection: Selection,
+    scene_activity: str | None = None,
+    scene_weather_integration: str | None = None,
 ) -> None:
     """Append a selection to history."""
     history = load_history(root)
@@ -96,8 +99,13 @@ def record_selection(
     }
     if selection.photo:
         entry["photo"] = selection.photo
+    scene: dict[str, str] = {}
     if scene_activity:
-        entry["scene"] = {"activity": scene_activity}
+        scene["activity"] = scene_activity
+    if scene_weather_integration:
+        scene["weather_integration"] = scene_weather_integration
+    if scene:
+        entry["scene"] = scene
     history.append(entry)
     # Keep last 90 days
     cutoff = datetime.now() - timedelta(days=90)

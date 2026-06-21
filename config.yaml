@@ -11,8 +11,8 @@ styles:
     reassembled from multiple viewpoints simultaneously. Flat planes of muted color
     (ochre, slate blue, terracotta, olive) with bold black outlines separating each
     facet. The surface should look like oil paint on canvas with visible brushwork
-    texture. NOT a cartoon — this should look like a real cubist painting hanging in
-    a museum.
+    texture. The result should read as a museum-grade cubist oil painting, not a
+    cartoon.
   - >-
     Abstract organic cut-paper style. Loose, energetic brushstrokes in primary colors
     (red, blue, yellow, green, black) on a white or cream background. Thick black
@@ -23,70 +23,70 @@ styles:
     1930s-1950s vintage travel poster. Flat areas of color with no gradients, strong
     geometric composition, dramatic perspective. Warm palette of dusty blues, sunset
     oranges, cream, and forest green. Bold sans-serif typography integrated into the
-    design. The image should look like a lithograph print — slightly grainy texture,
+    design. The image should read as a lithograph print — slightly grainy texture,
     visible ink layers, muted rather than bright colors.
   - >-
     Mixed media collage. Layered torn paper, newspaper clippings, and painted surfaces
     overlapping. Visible tape, rough torn edges, mismatched textures. Some areas are
     photographic (halftone dots), others are flat painted color. Bold color blocks of
-    orange, blue, black, and white. The surface should look tactile — like you could
-    feel the layers of paper. Experimental modernist assemblage energy.
+    orange, blue, black, and white. The surface should feel tactile, with dimensional
+    paper layers. Experimental modernist assemblage energy.
   - >-
     Mid-century pop art screen-print poster. Ben-Day halftone dots visible in skin tones
     and backgrounds. Heavy black outlines. Flat areas of vivid primary colors (red,
     yellow, blue) and pink. High contrast, punchy, commercial look. The image should
-    look like it was screen-printed — slightly misregistered ink layers, bold graphic
+    read as a screen print — slightly misregistered ink layers, bold graphic
     impact. NOT subtle — everything is cranked to maximum saturation.
   - >-
     Art deco poster style from the 1920s-1930s. Strong geometric symmetry, radiating
     sunburst patterns, stepped/ziggurat forms. Metallic gold and bronze tones with deep
     navy, black, and cream. Elegant linear details and decorative borders integrated into
-    the composition. Streamlined, luxurious, architectural. Looks like a poster for a
-    luxury rail journey or a Jazz Age nightclub.
+    the composition. Streamlined, luxurious, architectural, with the polished finish of
+    a luxury rail journey or Jazz Age nightclub poster.
   - >-
     Minimalist art poster with extremely reduced forms. Subjects depicted as simple flat
     geometric shapes — circles, rectangles, triangles. Very limited muted palette (2-3
     colors plus black and white). Large areas of negative space. No outlines — shapes
-    defined by color alone. Clean, quiet, contemplative. Like a Scandinavian design poster
-    or a Japanese minimalist print.
+    defined by color alone. Clean, quiet, contemplative, with calm gallery-poster
+    restraint.
   - >-
     Street art stencil on a concrete or brick wall. Crisp stencil-cut shapes with sharp
     edges and visible spray paint overspray halos. The wall texture (aggregate, mortar
     lines, weathered paint) shows through the ink. Limited to 3-4 spray paint colors —
     black, white, red, and blue. Occasional drips and runs where the paint pooled. Bold
-    graphic silhouettes with flat color fills. NOT a cartoon about graffiti — the IMAGE
-    ITSELF should look like it IS spray-painted on a wall.
+    graphic silhouettes with flat color fills. NOT a cartoon about graffiti — the image
+    itself should read as spray paint physically applied to a wall.
   - >-
     Jazzy mid-century modern illustration. Bold graphic shapes in bright primary colors
     (red, blue, yellow, green, black, white). Playful, rhythmic composition with shapes
     that overlap and interlock. Thick black outlines. Characters are simplified and
-    expressive — like a lively 1950s jazz album cover. Energetic, swinging, musical
-    feeling.
+    expressive, with the punch of a lively 1950s jazz album cover. Energetic, swinging,
+    musical feeling.
   - >-
     1960s limited-animation TV cartoon style. Flat cel-shaded colors with no gradients.
     Thick uniform black outlines. Simple but expressive character designs with
     exaggerated features. Backgrounds are loose watercolor-style washes with minimal
     detail. Limited retro palette — avocado green, burnt orange, mustard yellow,
-    turquoise. Like a frame from a retro Saturday-morning cartoon.
+    turquoise. A frame from a retro Saturday-morning cartoon.
   - >-
-    Children's picture book illustration with painted-paper collage and loose ink.
+    Storybook illustration with painted-paper collage and loose ink.
     Thick wobbly outlines in black. Bright flat colors that look like painted paper or
     crayon. Textures visible in the color fills — tissue paper, stamped paint, crayon
     wax. Simple, joyful, slightly messy. White or cream background showing through.
     Figures are round and friendly with big eyes.
   - >-
-    Eastern European folk art painting. Stylized flowers, birds, and decorative motifs
+    Decorative folk art painting. Stylized flowers, birds, and decorative motifs
     filling every surface. Bold symmetrical patterns. Bright primary colors on a dark or
-    white background. Subjects are flat and decorative rather than realistic — like
-    painted wooden toys or Ukrainian pysanky eggs. Every surface is patterned. Looks
-    hand-painted on wood.
+    white background. Subjects are flat and decorative rather than realistic, with the
+    charm of painted wooden toys and decorated eggs. Every surface is patterned. The
+    image should read as hand-painted on wood.
   - >-
-    Retro pixel art like a 16-bit video game. Chunky visible pixels, no anti-aliasing,
-    no smooth edges. Limited palette of 6-8 colors maximum. Characters are built from
-    large blocky pixel clusters — not detailed, not smooth. Black pixel outlines around
-    every shape. The entire image should look like a screenshot from a 16-bit home
-    console game — you should be able to count individual pixels. Backgrounds are simple
-    tiled patterns. Text should be in a blocky pixel font.
+    Low-resolution pixel art scene. Chunky visible square pixels, no anti-aliasing, no
+    smooth edges. Limited palette of 6-8 colors maximum. Characters are built from large
+    blocky pixel clusters — not detailed, not smooth. Black pixel outlines around every
+    shape. The entire image should read as a small retro sprite scene — you should be
+    able to count individual pixels. Backgrounds are simple tiled patterns. Text should
+    be in a blocky pixel font.
   - >-
     Traditional Japanese ukiyo-e woodblock print. Flat planes of pure color with no
     shading or gradients. Strong, confident black outlines drawn as if carved from a
@@ -96,12 +96,12 @@ styles:
     image should look like it was hand-pressed from carved cherrywood blocks — visible
     paper texture, occasional slight ink unevenness.
   - >-
-    Stained glass cathedral window. Every shape outlined by thick black leading
+    Stained glass art panel. Every shape outlined by thick black leading
     (1-3 pixels wide) separating segments of pure saturated jewel-toned glass — deep
     ruby red, sapphire blue, emerald green, amber yellow. No gradients within segments;
     each piece of glass is a single flat color. Light appears to glow through from
     behind, making colors luminous. Backgrounds broken into decorative geometric glass
-    panes. Figures have the simplified iconic quality of medieval church windows.
+    panes. Figures have simplified iconic shapes with flat, readable features.
     Should look like you could reach out and feel the cold lead came.
   - >-
     Linocut block print. Carved from a linoleum block — high contrast black ink on
@@ -117,11 +117,11 @@ styles:
     saturated red, pure blue, pure yellow, plus black and white. No gradients, no
     textures — flat graphic shapes only. Strong diagonal tension, shapes stacked and
     overlapping at angles. Sans-serif geometric typography integrated as part of the
-    composition. Revolutionary, functional, machine-age — looks like a 1920s agitprop
-    poster or a design-school exhibition flyer.
+    composition. Functional, machine-age, and design-school sharp, with the feel of a
+    1920s exhibition poster.
   - >-
-    Papercut silhouette art in the tradition of Chinese jianzhi or Scherenschnitte.
-    Single color cut from paper and laid over a contrasting background — typically
+    Papercut silhouette craft. Single color cut from paper and laid over a contrasting
+    background — typically
     bold red silhouettes on white, or black silhouettes on a single color. Shapes
     defined entirely by outline — every detail, including eyes and whiskers, is a
     cut-out void or a delicate connecting bridge of paper. Intricate lacework
@@ -129,20 +129,19 @@ styles:
     pure figure-ground contrast. Should look like scissors-cut paper craft, not
     digital vector art.
   - >-
-    1980s postmodern geometric design from Milan. Bold primary colors — red, blue,
+    1980s postmodern geometric design. Bold primary colors — red, blue,
     yellow, green — plus black and white. Playful geometric patterns: squiggles,
     dots, zigzags, triangles, and speckled decorative fills. Flat shapes with no
     shading, arranged with deliberate asymmetric imbalance. Black-and-white patterns
     (checkerboards, squiggle grids) used as backgrounds or on furniture. Feels brash,
     cheerful, and off-kilter — like an album cover from 1985 or a playful TV set.
   - >-
-    German Expressionist woodcut. Heavy stark black ink dominating the image with a
+    Expressionist woodcut. Heavy stark black ink dominating the image with a
     single bold accent color — burning red or mustard yellow — used sparingly for
     emotional emphasis. Jagged, angular, hand-carved lines with visible gouge marks.
     Distorted, emotionally intense figures. Raw paper texture visible through the ink.
-    Stark contrast between black mass and bare paper with no midtones. Should look
-    like it was carved with rough tools in anger and pressed by hand — urgent,
-    primitive, tactile.
+    Stark contrast between black mass and bare paper with no midtones. The image should
+    read as hand-carved and hand-pressed — urgent, raw, tactile.
 
 # Which provider does the final image render vs the scene description.
 # Options for each: 'openai' | 'gemini'

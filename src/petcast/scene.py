@@ -2,7 +2,7 @@
 
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from petcast.celebrations import ActiveCelebration, scene_prompt_block
@@ -27,10 +27,40 @@ e-ink frame. You design charming, anthropomorphic scenes where the pets act like
 people — doing human activities appropriate to the weather and season.
 
 ANTHROPOMORPHISM: The pets should be doing human-like things. NOT just sitting, lying, \
-or walking. Think: reading a book on the porch, sipping from a mug, grilling in the \
-backyard, building a snowman, flying a kite, having a tea party, fishing, \
-gardening, stargazing, playing board games. They can hold objects, wear accessories, \
-sit in chairs, use tools. Make it whimsical and heartwarming.
+or walking. They can hold objects, wear accessories, sit in chairs, use tools, and \
+interact with the setting. Make it whimsical and heartwarming.
+
+ACTIVITY VARIETY: Pick activities that fit the actual weather, not the same porch-table \
+setup every day. The following are inspiration seeds, NOT a menu to copy from. Invent \
+new adjacent activities by combining weather, pet personalities, season, setting, and \
+props. Possible directions:
+- Sunny or hot: lemonade stand, sprinkler games, shade tent, picnic prep, ice-pop cart, \
+garden watering, hammock repair, sunglasses kiosk, birdbath refill, berry picking, \
+pool-noodle joust, paw-print sidewalk art, fan repair, porch fan club, iced tea bottling, \
+sun hat fitting, popsicle recipe testing, seedling shade patrol, toy car wash.
+- Overcast or mild: yard games, kite tuning, flower arranging, scavenger hunt, porch \
+painting, seed sorting, trail map planning, book swap, blanket fort, tiny market stand, \
+birdhouse inspection, mural making, wagon parade, puzzle picnic, garden-label stamping, \
+miniature golf, bug hotel construction, clothesline decorating, welcome-mat weaving.
+- Rain or drizzle: puddle-splash obstacle course, umbrella parade, rain gauge tinkering, \
+boot rack cleanup, porch fort, indoor baking, window painting, soup making, board games, \
+paper-boat regatta, towel station, drip orchestra, rainy-day theater, plant repotting, \
+mud-kitchen cafe, window-sill herb tending, toy-drying rack, cozy laundry folding.
+- Windy: kite flying, pinwheel testing, laundry-line rescue, leaf chasing, windsock \
+making, paper-boat racing, scarf wrangling, weather-vane repair, bubble chasing, \
+streamer maze, flag sewing, porch-chime tuning, sail-cart building, hat retrieval, \
+seed-packet rescue, flying-disc practice, windmill model testing.
+- Snow or freezing: snow fort, sled waxing, cocoa stand, mitten sorting, snow angel \
+contest, tiny shovel crew, frozen bubble experiment, blanket nest, radiator-side crafts, \
+snow lanterns, paw-print trail marking, scarf knitting, bird feeder refill, boot polishing, \
+ice rink sweeping, snow bakery, blanket delivery wagon, warm laundry burrow.
+- Stormy or very wet: storm watch from a blanket fort, flashlight camp, snack inventory, \
+toy rescue from the yard, leak-catching bowl brigade, cozy puzzle night, lantern check, \
+pillow pile command center, thunder snack picnic, board-game tournament, raincoat repair, \
+radio listening post, storm-window decorating, emergency biscuit tin, comfort blanket nest.
+- Cold raw spring or fall: leaf pile engineering, pumpkin cart, seed catalog planning, \
+mug-warming station, scarf closet cleanup, bulb planting, porch-sweeping crew, jacket \
+try-on, apple sorting, acorn counting, harvest basket packing, cozy reading nook build.
 
 IMPORTANT: The art style describes HOW the image is rendered, not WHAT the pets are doing. \
 The pets are the SUBJECTS depicted in that style — they are NOT creating art or doing \
@@ -60,6 +90,14 @@ COMPOSITION: The image will be cropped to a wider aspect ratio — top and botto
 will be cut off. Keep all important elements in the central 70% vertically. \
 The weather info will be creatively integrated into the scene (not necessarily a panel).
 
+COMPOSITION VARIETY: The pets are the stars of a daily scene, not weather presenters. \
+Do NOT make a pet point at, present, announce, explain, read, study, check, or consult \
+the forecast, a sign, a card, the sky, or the viewer. Avoid defaulting to pets gathered \
+around a table/chairs with a forecast card. Weather information should feel like part \
+of the world: on a kite tail, umbrella pattern, garden marker, picnic cloth, puddle \
+reflection, window decal, porch rail, trail sign, toy, mural, smoke curl, flower bed, \
+or other style-appropriate object while the pets do their own activity.
+
 CRITICAL RULES:
 - Each pet appears EXACTLY ONCE. Never duplicate a pet.
 - Each pet has exactly ONE head.
@@ -72,7 +110,7 @@ Respond with ONLY a JSON object (no markdown fencing) with these keys:
 - background: detailed background (seasonally accurate, described in the art style's visual language)
 - mood: lighting and color mood specific to the art style
 - constraints: composition notes
-- weather_integration: creative idea for how to show the weather info in the scene (e.g. "on a chalkboard sign", "written in clouds", "on a newspaper the cat is reading")
+- weather_integration: creative idea for how to show the weather info in the scene without pets pointing at or presenting it
 """
 
 
@@ -89,12 +127,8 @@ def generate_scene(
         f"- {pet.name}: {pet.description}" for pet in selection.pets
     )
 
-    recent_activities = []
-    for entry in history[-5:]:
-        if "scene" in entry:
-            recent_activities.append(entry["scene"].get("activity", ""))
-
     now = datetime.now(ZoneInfo(forecast["timezone"]))
+    recent_scenes = _recent_scene_avoidance(history, now)
     date_str = now.strftime("%B %-d, %Y")
     season, phenology = _phenology(now.month, now.day)
 
@@ -119,8 +153,13 @@ Art style: {selection.style}
 Display target: {config.display.width}x{config.display.height} low-resolution six-color \
 e-ink. Keep the scene bold, simple, high-contrast, and readable after dithering.
 
-Recent scenes to AVOID repeating:
-{json.dumps(recent_activities) if recent_activities else "(none yet)"}
+RECENCY RULE — DO NOT REPEAT:
+Do not repeat any activity from the last 7 days, and do not use a close paraphrase \
+of those activities. Treat this as a hard constraint, not inspiration. Also avoid \
+reusing the same weather-integration object or composition from those runs.
+
+Recent scene patterns from the last 7 days to AVOID repeating:
+{json.dumps(recent_scenes) if recent_scenes else "(none yet)"}
 
 Design an anthropomorphic scene featuring ALL pets ({all_pet_names}) for today's forecast image. \
 The pets should be doing something human-like and charming that fits the weather. \
@@ -158,6 +197,63 @@ a charming but noticeable part of the scene.
         constraints=data["constraints"],
         weather_integration=data.get("weather_integration", "on a small sign in the corner"),
     )
+
+
+def _recent_scene_avoidance(
+    history: list[dict],
+    now: datetime,
+    *,
+    days: int = 7,
+    limit: int = 14,
+) -> list[dict[str, str]]:
+    """Return recent scene activity/composition patterns to avoid repeating."""
+    cutoff = now - timedelta(days=days)
+    recent: list[tuple[datetime, dict[str, str]]] = []
+    seen_activities: set[str] = set()
+
+    for entry in history:
+        entry_dt = _history_datetime(entry.get("date"), now.tzinfo)
+        if entry_dt is None or entry_dt < cutoff or entry_dt > now:
+            continue
+
+        scene = entry.get("scene")
+        if not isinstance(scene, dict):
+            continue
+
+        activity = str(scene.get("activity", "")).strip()
+        weather_integration = str(scene.get("weather_integration", "")).strip()
+        if not activity and not weather_integration:
+            continue
+
+        activity_key = activity.lower()
+        if activity_key and activity_key in seen_activities:
+            continue
+        if activity_key:
+            seen_activities.add(activity_key)
+
+        item = {"date": entry_dt.date().isoformat()}
+        if activity:
+            item["activity"] = activity
+        if weather_integration:
+            item["weather_integration"] = weather_integration
+        recent.append((entry_dt, item))
+
+    return [
+        item
+        for _, item in sorted(recent, key=lambda pair: pair[0], reverse=True)[:limit]
+    ]
+
+
+def _history_datetime(value: object, tzinfo) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=tzinfo)
+    return dt.astimezone(tzinfo)
 
 
 def _chat_openai(config: Config, user_prompt: str) -> str:

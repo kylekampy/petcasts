@@ -1,71 +1,81 @@
 [
   {
-    "date": "2026-03-20T15:19:51.499605",
+    "date": "2026-04-22T08:45:43.138405",
     "pet_names": [
-      "Margot"
+      "Mumford",
+      "Fennec"
     ],
-    "photos": [
-      "margot_zeya_pebble.png"
-    ],
-    "style": "comic book pop art",
+    "photo": "fennec_mumford_in_cat_bed.png",
+    "style": "Pop art in the style of Roy Lichtenstein or Andy Warhol. Ben-Day halftone dots visible in skin tones and backgrounds. Heavy black outlines. Flat areas of vivid primary colors (red, yellow, blue) and pink. High contrast, punchy, commercial look. The image should look like it was screen-printed \u2014 slightly misregistered ink layers, bold graphic impact. NOT subtle \u2014 everything is cranked to maximum saturation.",
     "scene": {
-      "activity": "Margot, the vizsla, is energetically chasing a colorful pop-art style frisbee as gusts of wind swirl around her."
+      "activity": "Mumford and Fennec are diligently tending to their vibrant patio garden, with Mumford carefully watering a pot of blooming tulips using a brightly colored watering can, while Fennec, wrapped in a graphic scarf against the gentle breeze, proudly admires a cluster of yellow daffodils."
     }
   },
   {
-    "date": "2026-03-20T15:26:19.687261",
+    "date": "2026-04-22T08:54:59.160060",
     "pet_names": [
-      "Margot",
-      "Zeya",
-      "Pebble"
+      "Mumford",
+      "Fennec"
     ],
-    "photo": "margot_zeya_pebble.png",
-    "style": "Japanese woodblock print",
+    "photo": "fennec_mumford_on_bed.png",
+    "style": "Stained glass cathedral window. Every shape outlined by thick black leading (1-3 pixels wide) separating segments of pure saturated jewel-toned glass \u2014 deep ruby red, sapphire blue, emerald green, amber yellow. No gradients within segments; each piece of glass is a single flat color. Light appears to glow through from behind, making colors luminous. Backgrounds broken into decorative geometric glass panes. Figures have the simplified iconic quality of medieval church windows. Should look like you could reach out and feel the cold lead came.",
     "scene": {
-      "activity": "Margot, Zeya, and Pebble are playfully wrestling together in a breezy early-spring park, with Zeya occasionally breaking away to fetch a wooden stick before rejoining the group."
+      "activity": "Mumford, with his warm buff coat rendered in amber and cream glass segments, is serenely enjoying the gentle breeze from a sturdy porch swing, his golden-green eyes simplified into emerald ovals as he attempts to read from a book, while Fennec, his wrinkly gray/lavender skin depicted in cool sapphire and amethyst glass panes, is cozily bundled in a light throw blanket of deep ruby red glass segments, happily sipping from a small, vibrant emerald green mug, occasionally casting a simplified pale blue eye towards the swaying, newly leafed branches."
     }
   },
   {
-    "date": "2026-03-20T15:31:55.271485",
+    "date": "2026-04-22T08:59:13.252337",
     "pet_names": [
       "Margot",
       "Zeya",
       "Pebble"
     ],
-    "photo": "margot_zeya_pebble.png",
-    "style": "Japanese woodblock print",
+    "photo": "margot_zeya_pebble_posing.png",
+    "style": "Bauhaus / Constructivist poster in the style of Rodchenko, El Lissitzky, or Herbert Bayer. Bold geometric composition built from pure circles, rectangles, and diagonals. Strictly primary palette \u2014 saturated red, pure blue, pure yellow, plus black and white. No gradients, no textures \u2014 flat graphic shapes only. Strong diagonal tension, shapes stacked and overlapping at angles. Sans-serif geometric typography integrated as part of the composition. Revolutionary, functional, machine-age \u2014 looks like a 1920s agitprop poster or a Bauhaus exhibition flyer.",
     "scene": {
-      "activity": "Margot, Zeya, and Pebble are walking together along a blustery, early-spring riverside path, Margot leading energetically while Zeya, sporting her tiny tail nub, sniffs curiously at scattered sticks, and Pebble stays close by, bundled up in a soft scarf for comfort."
+      "activity": "Margot, embodying geometric precision, is enthusiastically demonstrating the assembly of a new, vibrantly colored modular birdhouse, constructed from stark red, blue, and yellow planar shapes, while Zeya, her single black circular eye keenly focused, meticulously aligns a small yellow triangular piece with her paw, and Pebble dozes contentedly, a large blue geometric shape indicating her relaxed posture, against a simplified white rectangular bench."
     }
   },
   {
-    "date": "2026-03-20T15:46:59.910877",
+    "date": "2026-04-22T09:13:45.567508",
     "pet_names": [
-      "Margot",
-      "Zeya",
-      "Pebble"
+      "Mumford",
+      "Fennec"
     ],
-    "photo": "margot_zeya_pebble.png",
-    "style": "children's book illustration",
+    "photo": "mumford_fennec_sleeping.png",
+    "style": "Japanese ukiyo-e woodblock print in the tradition of Hokusai or Hiroshige. Flat planes of pure color with no shading or gradients. Strong, confident black outlines drawn as if carved from a woodblock \u2014 slightly varying in thickness. Limited palette of deep Prussian blue, vermilion red, warm yellow, leafy green, and black on a cream/off-white paper ground. Stylized waves, clouds, and plants rendered as decorative patterns. The image should look like it was hand-pressed from carved cherrywood blocks \u2014 visible paper texture, occasional slight ink unevenness.",
     "scene": {
-      "activity": "Margot, Zeya, and Pebble are having a cozy picnic on a faded, early-spring blanket: Margot looks playful as she noses at a cloth-wrapped sandwich, Zeya uses her one eye to vigilantly guard a bouncing tennis ball from the chilly wind, and Pebble, bundled in a pastel sweater, is curled up contentedly against a picnic basket."
+      "activity": "Mumford and Fennec sit at a small tea table beneath blooming crabapple branches, with Mumford politely pouring iced tea while Fennec, in a tiny dark collar charm, reaches for a plate of snacks and inspects a paper weather slip like a little host."
     }
   },
   {
-    "date": "2026-03-20T15:51:34.222656",
+    "date": "2026-04-22T09:23:43.297304",
     "pet_names": [
-      "Margot",
-      "Zeya",
-      "Pebble"
+      "Pebble",
+      "Mumford"
     ],
-    "photo": "margot_zeya_pebble.png",
-    "style": "claymation stop-motion",
+    "photo": "pebble_mumford_on_couch.png",
+    "style": "Papercut silhouette art in the tradition of Chinese jianzhi or Scherenschnitte. Single color cut from paper and laid over a contrasting background \u2014 typically bold red silhouettes on white, or black silhouettes on a single color. Shapes defined entirely by outline \u2014 every detail, including eyes and whiskers, is a cut-out void or a delicate connecting bridge of paper. Intricate lacework patterns and decorative borders. No shading, no colors within silhouettes \u2014 pure figure-ground contrast. Should look like scissors-cut paper craft, not digital vector art.",
     "scene": {
-      "activity": "Margot, Zeya, and Pebble are clustered together at the edge of a puddle on a patchy, muddy field, all gazing at their own distorted claymation reflections in the water as a gust of wind ruffles their fur and ripples the surface."
+      "activity": "On a breezy spring porch, Pebble leans over a tiny woven basket to hold down a paper kite tail while Mumford, beside her in a little chair, studies a folded weather newspaper and points up at the sky like they are planning a perfect afternoon outing together."
     }
   },
   {
-    "date": "2026-03-20T19:01:37.489666",
+    "date": "2026-04-22T09:40:49.432625",
+    "pet_names": [
+      "Zeya",
+      "Patrick",
+      "Pixel",
+      "Kona"
+    ],
+    "photo": "zeya_patrick_pixel_kona_on_red_blanket.png",
+    "style": "Memphis Group postmodern design from 1980s Milan (Ettore Sottsass, Nathalie Du Pasquier). Bold primary colors \u2014 red, blue, yellow, green \u2014 plus black and white. Playful geometric patterns: squiggles, dots, zigzags, triangles, and \"bacterio\" speckles used as decorative fills. Flat shapes with no shading, arranged with deliberate asymmetric imbalance. Black-and-white patterns (checkerboards, squiggle grids) used as backgrounds or on furniture. Feels brash, cheerful, and off-kilter \u2014 like an album cover from 1985 or a set from Pee-wee's Playhouse.",
+    "scene": {
+      "activity": "Zeya is enthusiastically chasing and dropping a neon-red ball to host fetch, while Patrick, Pixel, and Kona lounge at a geometric patio caf\u00e9 table sharing cool drinks, with Patrick reading the forecast card, Pixel pointing at the sky, and Kona leaning in for cuddles beside him."
+    }
+  },
+  {
+    "date": "2026-04-29T14:46:08.673983",
     "pet_names": [
       "Margot",
       "Zeya",
@@ -76,173 +86,69 @@
       "Pixel",
       "Kona"
     ],
-    "photo": "margot_zeya_in_dog_bed.png",
-    "style": "impressionist oil painting",
+    "style": "1930s-1950s vintage travel poster. Flat areas of color with no gradients, strong geometric composition, dramatic perspective. Warm palette of dusty blues, sunset oranges, cream, and forest green. Bold sans-serif typography integrated into the design. The image should look like a lithograph print \u2014 slightly grainy texture, visible ink layers, muted rather than bright colors.",
     "scene": {
-      "activity": "All three dogs and five cats are gathered on a patchy, straw-brown early-spring lawn by a bare-limbed tree, huddling together on a slightly rumpled picnic blanket as a playful gust of wind flutters the blanket and the pets' ears, while the cats and Fennec (wearing a knit sweater) snuggle closely among the dogs for warmth."
+      "activity": "Margot, Zeya, Pebble, Mumford, Fennec, Patrick, Pixel, and Kona are gathered as a tiny pet meteorology lab team, all facing the camera in different little lab badges while they celebrate Test Day around a miniature weather station and a big \"Happy Test Day\" sign."
     }
   },
   {
-    "date": "2026-03-20T19:25:08.495030",
+    "date": "2026-04-29T15:01:52.824222",
     "pet_names": [
-      "Patrick",
-      "Pixel"
-    ],
-    "photo": "patrick_pixel_on_couch.png",
-    "style": "retro pixel art with chunky pixels and limited palette",
-    "scene": {
-      "activity": "Patrick and Pixel are perched side by side on a weathered wooden bench, watching early robins search for worms in the patchy, damp grass below as a gentle breeze ruffles their fur."
-    }
-  },
-  {
-    "date": "2026-03-20T19:47:59.100235",
-    "pet_names": [
-      "Mumford",
-      "Fennec"
-    ],
-    "photo": "mumford_fennec_sleeping.png",
-    "style": "screen print with limited flat color layers",
-    "scene": {
-      "activity": "Mumford and Fennec are lounging together on a faded, woven outdoor chair on a small porch, cuddled close to stay warm from the chilly, windy spring day, with Fennec curled up tightly against Mumford and burrowed halfway under a chunky knit blanket."
-    }
-  },
-  {
-    "date": "2026-03-20T20:52:49.837012",
-    "pet_names": [
-      "Pebble",
-      "Mumford"
-    ],
-    "photo": "pebble_mumford_kitten_cuddling.png",
-    "style": "screen print with limited flat color layers",
-    "scene": {
-      "activity": "Pebble and Mumford are huddled together on an early-spring porch swing, sharing warmth under a breezy, overcast sky as Pebble dozes and Mumford nestles comfortably against his side."
-    }
-  },
-  {
-    "date": "2026-03-20T20:54:24.184218",
-    "pet_names": [
-      "Mumford",
-      "Fennec"
-    ],
-    "photo": "fennec_mumford_in_cat_bed.png",
-    "style": "vintage travel poster with flat graphic shapes",
-    "scene": {
-      "activity": "Mumford and Fennec, both looking anxious, are huddled together around a nearly-empty, oversized vintage flashlight with a glowing red battery indicator, as if hoping for warmth and light before it goes out."
-    }
-  },
-  {
-    "date": "2026-03-21T08:16:59.351286",
-    "pet_names": [
+      "Margot",
       "Zeya",
+      "Pebble",
+      "Mumford",
+      "Fennec",
       "Patrick",
       "Pixel",
       "Kona"
     ],
-    "photo": "zeya_patrick_pixel_kona_on_red_blanket.png",
-    "style": "children's book illustration with thick outlines and bright flat colors",
+    "style": "Abstract organic cut-paper style. Loose, energetic brushstrokes in primary colors (red, blue, yellow, green, black) on a white or cream background. Thick black outlines that look hand-drawn with a marker. Shapes are free-form and imprecise \u2014 leaves, flowers, and figures are suggested rather than detailed. Joyful, spontaneous, and childlike but sophisticated.",
     "scene": {
-      "activity": "Zeya enthusiastically fetches a colorful toy while Patrick, Pixel, and Kona lounge on a cozy blanket, watching her with playful curiosity against a backdrop of bare trees swaying gently in the spring breeze."
+      "activity": "At a tiny outdoor weather lab table, Margot, Zeya, Pebble, Mumford, Fennec, Patrick, Pixel, and Kona all face the camera in matching-but-different little lab badges while they celebrate Happy Test Day around a miniature weather station, confetti, clipboards, and a big sign, with Margot playfully nudging Zeya, Pebble leaning in for a cozy group pose, and the cats tucked right into the cheerful bustle."
     }
   },
   {
-    "date": "2026-03-21T08:48:41.610960",
-    "pet_names": [
-      "Pebble",
-      "Fennec"
-    ],
-    "photo": "pebble_fennec_cuddling.png",
-    "style": "linocut print with high contrast black and white plus spot color",
-    "scene": {
-      "activity": "Pebble is peacefully lounging in a cozy hammock strung between two bare tree trunks, wearing a colorful patterned collar, as Fennec sits nearby on a picnic blanket, nibbling on a tiny sandwich while curiously watching a few playful ants march by."
-    }
-  },
-  {
-    "date": "2026-03-21T08:49:55.424425",
-    "pet_names": [
-      "Zeya",
-      "Mumford"
-    ],
-    "photo": "mumford_kitten_zeya_snuggling.png",
-    "style": "vintage travel poster with flat graphic shapes",
-    "scene": {
-      "activity": "Zeya excitedly plays fetch with a colorful frisbee while Mumford lounges on a picnic blanket, sipping from a bright yellow mug, both enjoying the mild overcast spring day in La Crosse."
-    }
-  },
-  {
-    "date": "2026-03-22T09:18:22.801756",
-    "pet_names": [
-      "Margot",
-      "Zeya",
-      "Pebble"
-    ],
-    "photo": "margot_zeya_pebble_posing.png",
-    "style": "Japanese woodblock print with strong black outlines",
-    "scene": {
-      "activity": "Margot is vigorously attempting to hang a large sheet on a clothesline, which is dramatically billowing in the brisk wind, while Zeya playfully tugs at a corner of the flapping fabric, and Pebble sits nearby on a low wooden bench, calmly sipping from a warm mug."
-    }
-  },
-  {
-    "date": "2026-03-22T09:35:44.358248",
-    "pet_names": [
-      "Margot",
-      "Pebble"
-    ],
-    "photo": "pebble_margot_sitting.png",
-    "style": "folk art painting with simple shapes and bold patterns",
-    "scene": {
-      "activity": "Margot and Pebble are huddled close together under a brightly patterned blanket, looking with concerned, wide eyes at a sputtering, dimming lantern, as if trying to coax more light from its dwindling flame against the brisk spring wind."
-    }
-  },
-  {
-    "date": "2026-03-22T09:38:14.738505",
+    "date": "2026-04-29T15:41:54.995616",
     "pet_names": [
       "Margot",
       "Zeya",
       "Pebble",
       "Mumford",
-      "Fennec"
+      "Fennec",
+      "Patrick",
+      "Pixel",
+      "Kona"
     ],
-    "photo": "zeya_mumford_pebble_fennec_margot_couch_pile.png",
-    "style": "graffiti street art with stencil shapes, spray paint texture, and high contrast",
+    "style": "Street art stencil on a concrete or brick wall. Crisp stencil-cut shapes with sharp edges and visible spray paint overspray halos. The wall texture (aggregate, mortar lines, weathered paint) shows through the ink. Limited to 3-4 spray paint colors \u2014 black, white, red, and blue. Occasional drips and runs where the paint pooled. Bold graphic silhouettes with flat color fills. NOT a cartoon about graffiti \u2014 the IMAGE ITSELF should look like it IS spray-painted on a wall.",
     "scene": {
-      "activity": "Margot, Zeya, Pebble, Mumford, and Fennec are collaborating on a vibrant graffiti mural on an old wooden panel, bringing a splash of early spring color to their outdoor space."
+      "activity": "On a windy mid-spring courtyard, Margot, Zeya, Pebble, Mumford, Patrick, Pixel, and Kona gather around Fennec\u2019s birthday blanket-nest while Fennec, crowned as the birthday star, sits in a warm little throne of folded blankets receiving treats, with Margot teasingly presenting a frisbee-shaped gift and the cats joining the celebration like a cozy audience."
     }
   },
   {
-    "date": "2026-03-22T09:53:01.420875",
-    "pet_names": [
-      "Zeya",
-      "Mumford"
-    ],
-    "photo": "mumford_kitten_zeya_on_couch.png",
-    "style": "Graffiti street art on a concrete or brick wall. Stencil-cut shapes with sharp edges and spray paint overspray halos. The wall texture is visible through the paint. Limited to 3-4 colors of spray paint (black, white, red, blue). Some drips and runs. Political poster aesthetic \u2014 think Banksy or Shepard Fairey's OBEY. NOT a cartoon about graffiti \u2014 the IMAGE ITSELF should look like it IS graffiti on a wall.",
-    "scene": {
-      "activity": "Zeya is vigorously attempting to fly a large kite that's buffeting wildly in the brisk wind, her single visible eye focused on the task, while Mumford, holding onto a tiny hot air balloon, watches intently from a sturdy perch."
-    }
-  },
-  {
-    "date": "2026-03-22T09:59:28.147577",
-    "pet_names": [
-      "Margot",
-      "Zeya",
-      "Pebble"
-    ],
-    "photo": "margot_zeya_pebble_with_owners.png",
-    "style": "Children's picture book illustration like Eric Carle or Oliver Jeffers. Thick wobbly outlines in black. Bright flat colors that look like painted paper or crayon. Textures visible in the color fills \u2014 tissue paper, stamped paint, crayon wax. Simple, joyful, slightly messy. White or cream background showing through. Figures are round and friendly with big eyes.",
-    "scene": {
-      "activity": "Margot, in her rust-red coat and light blue collar, is expressively reading from a giant, brightly colored storybook, while Pebble, with her tan and white markings, gently holds down the pages with a paw to prevent them from fluttering in the brisk wind, and Zeya, with her one visible eye wide and ears perked, playfully tries to catch a textured, crayon-colored paper leaf that has drifted from the book's pages, swirling upwards on the breeze."
-    }
-  },
-  {
-    "date": "2026-03-22T10:07:49.858036",
+    "date": "2026-06-21T10:13:25.420178",
     "pet_names": [
       "Mumford",
       "Fennec"
     ],
+    "style": "Abstract organic cut-paper style. Loose, energetic brushstrokes in primary colors (red, blue, yellow, green, black) on a white or cream background. Thick black outlines that look hand-drawn with a marker. Shapes are free-form and imprecise \u2014 leaves, flowers, and figures are suggested rather than detailed. Joyful, spontaneous, and childlike but sophisticated.",
     "photo": "fennec_mumford_on_bed.png",
-    "style": "Retro pixel art like a 16-bit video game. Chunky visible pixels, no anti-aliasing, no smooth edges. Limited palette of 6-8 colors maximum. Characters are built from large blocky pixel clusters \u2014 not detailed, not smooth. Black pixel outlines around every shape. The entire image should look like a screenshot from a Super Nintendo or Sega Genesis game \u2014 you should be able to count individual pixels. Backgrounds are simple tiled patterns. Text should be in a blocky pixel font.",
     "scene": {
-      "activity": "Mumford and Fennec are enjoying a cozy outdoor snack on a weathered porch, with Mumford gently sipping from a warm pixelated mug while Fennec, bundled in a blocky knit sweater, intently gazes at a delicious pixel biscuit."
+      "activity": "On an overcast summer afternoon, Mumford and Fennec run a tiny lemonade-and-ice-pops stand in the yard, with Mumford arranging bright cups and Fennec in a sweater-sleeve apron fussing over the cooler and sniffing the snacks like a food critic.",
+      "weather_integration": "Show the forecast in the scene through a pale gray cloud-shaped pennant hanging from the lemonade stand awning, with tiny simple icon marks worked into the cloth pattern and a few wind-swept napkins fluttering sideways to suggest the 11 mph breeze and dry, overcast conditions."
+    }
+  },
+  {
+    "date": "2026-06-21T10:24:07.972067",
+    "pet_names": [
+      "Pebble",
+      "Mumford"
+    ],
+    "style": "1930s-1950s vintage travel poster. Flat areas of color with no gradients, strong geometric composition, dramatic perspective. Warm palette of dusty blues, sunset oranges, cream, and forest green. Bold sans-serif typography integrated into the design. The image should read as a lithograph print \u2014 slightly grainy texture, visible ink layers, muted rather than bright colors.",
+    "photo": "pebble_mumford_kitten_cuddling.png",
+    "scene": {
+      "activity": "On a breezy overcast summer afternoon in La Crosse, Pebble and Mumford operate a cozy porch-side welcome-mat weaving station, with Pebble carefully pressing strips into a bold geometric pattern while Mumford sorts the colors and coils the finished mat beside him.",
+      "weather_integration": "Integrate the weather into the mat design itself: the woven pattern includes a pale overcast cloud band, a small angled wind-chevron motif to suggest the 11 mph breeze, and a few tiny dry-grass blocks in the lawn; the mat\u2019s label tag can read as a stylized travel-poster stamp rather than explicit forecast text."
     }
   }
 ]

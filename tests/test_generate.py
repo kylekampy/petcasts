@@ -122,3 +122,35 @@ def test_build_prompt_includes_eink_display_constraints():
     assert "six-color e-ink" in prompt
     assert "Avoid tiny text" in prompt
     assert "avoid gradients and fine texture" in prompt
+
+
+def test_build_prompt_uses_scene_weather_integration_and_bans_presenter_pose():
+    pets = [Pet("Alice", "gray cat", ["alice.png"])]
+    selection = Selection(pets=pets, photo="alice.png", style="bold poster style")
+    scene = SceneDescription(
+        activity="Alice plays in the garden.",
+        foreground="Alice bats a toy across large garden stones.",
+        background="Simple summer yard.",
+        mood="Bright and clear.",
+        constraints="Keep everything centered.",
+        weather_integration="The forecast is painted onto oversized garden stones.",
+    )
+    forecast = {
+        "weather_code": 0,
+        "weather_desc": "Clear sky",
+        "weather_icon": "sun",
+        "weather_icon_desc": "a bright yellow sun with rays, no clouds",
+        "high_f": 70.0,
+        "low_f": 50.0,
+        "precip_chance": 0,
+        "wind_mph": 5.0,
+        "sunrise": "2026-04-29T06:00",
+        "sunset": "2026-04-29T20:00",
+        "timezone": "America/Chicago",
+    }
+
+    prompt = _build_prompt(selection, scene, forecast, reference_count=1)
+
+    assert "WEATHER INTEGRATION IDEA: The forecast is painted onto oversized garden stones." in prompt
+    assert "Do NOT pose pets as weather presenters" in prompt
+    assert "No pet should point at" in prompt

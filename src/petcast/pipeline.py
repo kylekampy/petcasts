@@ -2,6 +2,7 @@
 
 import json
 import os
+import random
 import time
 from datetime import datetime
 from pathlib import Path
@@ -87,6 +88,8 @@ def run(root: Path, debug: bool = False, battery_pct: float | None = None, force
     t = _step("Generating image...")
     raw_image = None
     attempted_styles = {selection.style}
+    style_attempts = [selection.style]
+    blocked_styles: list[str] = []
     for attempt in range(3):
         try:
             raw_image = generate_image(
@@ -102,12 +105,14 @@ def run(root: Path, debug: bool = False, battery_pct: float | None = None, force
         except Exception as e:
             if not _is_moderation_error(e):
                 raise
+            blocked_styles.append(selection.style)
             print(f"  Moderation blocked on attempt {attempt + 1}; re-selecting style and retrying")
             alt_styles = [s for s in config.styles if s not in attempted_styles]
             if not alt_styles:
                 raise
-            selection = type(selection)(pets=selection.pets, photo=selection.photo, style=alt_styles[0])
+            selection = type(selection)(pets=selection.pets, photo=selection.photo, style=random.choice(alt_styles))
             attempted_styles.add(selection.style)
+            style_attempts.append(selection.style)
             print(f"  New style: {selection.style[:80]}...")
             scene = generate_scene(
                 config,
@@ -133,7 +138,12 @@ def run(root: Path, debug: bool = False, battery_pct: float | None = None, force
         _save_debug(final, config.output.debug_dir, "02_dithered")
 
     # Record history
-    record_selection(root, selection, scene_activity=scene.activity)
+    record_selection(
+        root,
+        selection,
+        scene_activity=scene.activity,
+        scene_weather_integration=scene.weather_integration,
+    )
 
     # Step 6: Save
     t = _step("Saving outputs...")
@@ -165,6 +175,8 @@ def run(root: Path, debug: bool = False, battery_pct: float | None = None, force
         "photo": selection.photo,
         "reference_photos": [path.name for path in ref_photos],
         "style": selection.style,
+        "style_attempts": style_attempts,
+        "blocked_styles": blocked_styles,
         "battery_pct": battery_pct,
         "celebrations": celebration_metadata(celebrations),
         "weather": dict(forecast),
@@ -208,7 +220,17 @@ def run(root: Path, debug: bool = False, battery_pct: float | None = None, force
 def _is_moderation_error(exc: Exception) -> bool:
     """Detect OpenAI safety/moderation rejections so we can retry with a different style."""
     msg = str(exc).lower()
-    return "moderation_blocked" in msg or "safety system" in msg
+    markers = (
+        "moderation_blocked",
+        "content_policy",
+        "policy violation",
+        "safety system",
+        "safety filter",
+        "content filter",
+        "request was rejected",
+        "blocked by safety",
+    )
+    return any(marker in msg for marker in markers)
 
 
 def _save_rgb(img: Image.Image, path: Path) -> None:
